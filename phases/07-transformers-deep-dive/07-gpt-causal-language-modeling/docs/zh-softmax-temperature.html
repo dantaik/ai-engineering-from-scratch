@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>softmax 与 temperature：从裸分到骰子</title>
+<style>
+  :root{
+    --bg:#FFFFFF; --ink:#1A1A1A; --muted:#6E6E6E; --line:#E3E3E3; --rule:#2E2E2E;
+    --code-bg:#F6F6F6; --cell:#E8E8E8; --cell-ink:#2A2A2A; --diag:#ADADAD; --diag-ink:#111111;
+    --chip-old-ink:#9A9A9A; --out-bg:#1A1A1A; --out-ink:#FFFFFF;
+    --sans:"PingFang SC","Microsoft YaHei","Noto Sans CJK SC",-apple-system,"Segoe UI",sans-serif;
+    --mono:"SF Mono",ui-monospace,Consolas,"JetBrains Mono",Menlo,monospace;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --bg:#131313; --ink:#DCDCDC; --muted:#909090; --line:#2C2C2C; --rule:#C9C9C9;
+      --code-bg:#1C1C1C; --cell:#2E2E2E; --cell-ink:#D6D6D6; --diag:#606060; --diag-ink:#F2F2F2;
+      --chip-old-ink:#787878; --out-bg:#E4E4E4; --out-ink:#141414;
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#131313; --ink:#DCDCDC; --muted:#909090; --line:#2C2C2C; --rule:#C9C9C9;
+    --code-bg:#1C1C1C; --cell:#2E2E2E; --cell-ink:#D6D6D6; --diag:#606060; --diag-ink:#F2F2F2;
+    --chip-old-ink:#787878; --out-bg:#E4E4E4; --out-ink:#141414;
+  }
+  :root[data-theme="light"]{
+    --bg:#FFFFFF; --ink:#1A1A1A; --muted:#6E6E6E; --line:#E3E3E3; --rule:#2E2E2E;
+    --code-bg:#F6F6F6; --cell:#E8E8E8; --cell-ink:#2A2A2A; --diag:#ADADAD; --diag-ink:#111111;
+    --chip-old-ink:#9A9A9A; --out-bg:#1A1A1A; --out-ink:#FFFFFF;
+  }
+  body{background:var(--bg);color:var(--ink);font-family:var(--sans);
+    font-size:14px;line-height:1.85;margin:0;padding:0 20px 80px;-webkit-font-smoothing:antialiased;}
+  .col{max-width:680px;margin:0 auto;}
+  header.hd{max-width:680px;margin:52px auto 0;padding-bottom:1.2rem;border-bottom:1px solid var(--rule);}
+  .kicker{font-family:var(--mono);font-size:11px;letter-spacing:.08em;color:var(--muted);}
+  h1{font-size:20px;font-weight:700;margin:.5rem 0 .6rem;letter-spacing:.01em;}
+  .specline{font-family:var(--mono);font-size:12px;color:var(--muted);}
+  .thesis{margin:1.2rem 0 0;padding:2px 0 2px 16px;border-left:2px solid var(--rule);}
+  .thesis p{margin:0;font-size:13.5px;}
+  h2{font-family:var(--mono);font-size:14px;font-weight:700;letter-spacing:.02em;
+    border-top:1px solid var(--line);padding-top:1.8rem;margin:3rem 0 1rem;}
+  p{margin:.8rem 0;}
+  .muted{color:var(--muted);}
+  .small{font-size:12.5px;}
+  pre{background:var(--code-bg);border:1px solid var(--line);border-radius:4px;
+    padding:12px 16px;overflow-x:auto;font-family:var(--mono);font-size:12px;line-height:1.75;margin:1rem 0;}
+  code{font-family:var(--mono);font-size:.92em;background:var(--code-bg);border-radius:3px;padding:.06em .35em;}
+  pre code{background:none;padding:0;}
+  .panel{border-left:2px solid var(--rule);padding:2px 0 2px 16px;margin:1.3rem 0;}
+  .panel p{margin:.45rem 0;font-size:13.5px;}
+  .panel .pt{font-family:var(--mono);font-size:12px;font-weight:700;margin:0 0 .35rem;}
+  table.vt{border-collapse:collapse;width:100%;margin:.9rem 0;font-size:13px;font-variant-numeric:tabular-nums;}
+  table.vt th{text-align:right;font-family:var(--mono);font-size:11px;letter-spacing:.05em;color:var(--muted);
+    border-bottom:1px solid var(--rule);padding:.4em .7em;font-weight:400;}
+  table.vt th:first-child, table.vt td:first-child{text-align:left;}
+  table.vt td{border-bottom:1px solid var(--line);padding:.5em .7em;text-align:right;font-family:var(--mono);font-size:12.5px;}
+  table.vt tr.hl td{background:var(--code-bg);font-weight:700;}
+  .tblwrap{overflow-x:auto;}
+  .pbars{display:flex;flex-direction:column;gap:.55rem;margin:1rem 0 .3rem;}
+  .prow{display:flex;align-items:center;gap:.7rem;}
+  .plab{font-family:var(--mono);font-size:11px;color:var(--muted);width:92px;flex:none;text-align:right;}
+  .pbar{display:flex;height:26px;flex:1;border-radius:3px;overflow:hidden;border:1px solid var(--line);}
+  .ps{display:flex;align-items:center;justify-content:center;font-size:11px;font-family:var(--mono);
+    white-space:nowrap;overflow:hidden;flex:none;}
+  .ps.a{background:var(--diag);color:var(--diag-ink);}
+  .ps.b{background:var(--cell);color:var(--cell-ink);}
+  .ps.c{background:var(--code-bg);color:var(--muted);}
+  .ps.r{background:transparent;color:var(--chip-old-ink);}
+  footer{max-width:680px;margin:3.2rem auto 0;font-size:12px;color:var(--muted);
+    border-top:1px solid var(--line);padding-top:1.2rem;}
+  a{color:var(--ink);}
+  a:focus-visible{outline:2px solid var(--rule);outline-offset:2px;}
+</style>
+</head>
+<body>
+
+
+<header class="hd">
+  <div class="kicker">PHASE 7 · GPT — CAUSAL LANGUAGE MODELING · 附录</div>
+  <h1>softmax 与 temperature：从裸分到骰子</h1>
+  <div class="specline">承接《玩具 GPT 全流程走查》· 语境「我爱吃」之后的出口打分 · V = 10</div>
+  <div class="thesis">
+    <p>随机不是温度产生的——随机来自「按概率抽签」这个动作。温度只负责在掷骰子之前改变签筒里各段的长度：softmax(z/T) 保序、只调悬殊。T = 0 是不掷骰子的特例，T = 1 是模型本色，T → ∞ 是纯瞎猜。</p>
+  </div>
+</header>
+
+<div class="col">
+  <h2>1 · logits：出口的裸分</h2>
+  <p>走查里讲过：模型取最后一个位置的语境化向量（1×4），乘输出矩阵 U（4×10），得到 <b>10 个实数——每个候选 token 一个分</b>。这排数叫 logits：可正可负、没有范围、加起来不等于任何特定值，就是裸分。名字借自统计学的对数几率（logit = log-odds，sigmoid 的反函数），深度学习里泛指「概率化之前的分数」。API 里的 <code>logprobs</code>、<code>logit_bias</code>、<code>temperature</code> 全都工作在这一层。本篇通篇使用同一组裸分：</p>
+  <pre><code>logits：苹果 3.1   香蕉 2.2   甜 0.5   我 0.3   ， 0.2   吃 0.1   很 −0.4   爱 −0.8   &lt;EOS&gt; −1.2   的 −2.0</code></pre>
+
+  <h2>2 · softmax：三步把裸分变概率</h2>
+  <pre><code>softmax(zᵢ / T) = e^(zᵢ/T) / Σⱼ e^(zⱼ/T)
+
+第一步：每个 logit 除以 T        T=0.5 等于分数全体 ×2；T=2 等于全体 ÷2；T=1 原样
+第二步：逐个取 e 的幂            把任意实数变成正数，指数放大差距
+第三步：除以全体之和 Σ           归一化，V 个数加起来 = 1</code></pre>
+  <p>以 T = 1 完整算一遍（第一步不改分数）：</p>
+  <div class="tblwrap">
+  <table class="vt">
+    <tr><th>token</th><th>z</th><th>e^z</th><th>÷ Σ = 概率</th></tr>
+    <tr class="hl"><td>苹果</td><td>3.1</td><td>22.198</td><td>0.583</td></tr>
+    <tr><td>香蕉</td><td>2.2</td><td>9.025</td><td>0.237</td></tr>
+    <tr><td>甜</td><td>0.5</td><td>1.649</td><td>0.043</td></tr>
+    <tr><td>我</td><td>0.3</td><td>1.350</td><td>0.035</td></tr>
+    <tr><td>，</td><td>0.2</td><td>1.221</td><td>0.032</td></tr>
+    <tr><td>吃</td><td>0.1</td><td>1.105</td><td>0.029</td></tr>
+    <tr><td>很</td><td>−0.4</td><td>0.670</td><td>0.018</td></tr>
+    <tr><td>爱</td><td>−0.8</td><td>0.449</td><td>0.012</td></tr>
+    <tr><td>&lt;EOS&gt;</td><td>−1.2</td><td>0.301</td><td>0.008</td></tr>
+    <tr><td>的</td><td>−2.0</td><td>0.135</td><td>0.004</td></tr>
+    <tr><td class="muted">合计</td><td class="muted"></td><td class="muted">Σ = 38.104</td><td class="muted">1.000</td></tr>
+  </table>
+  </div>
+  <p>从这张表读出 softmax 的三条性格：<b>负分不等于零概率</b>（「的」仍拿 0.4%，长尾永不清零——top-p/top-k 存在的理由）；<b>只看分差不看绝对值</b>（全体 logits 同加 100，概率纹丝不动，实现时先减最大值防溢出即源于此）；<b>保序</b>（裸分排名 = 概率排名，softmax 只调悬殊，从不翻盘）。</p>
+
+  <h2>3 · 分水岭：只有 T = 0 是特殊处理，其余一律是抽签</h2>
+  <div class="panel">
+    <p class="pt">温度的两种工作模式</p>
+    <p><b>T = 0：特判分支，恒定取最大。</b>不构造概率、不掷骰子，直接 argmax——logits 最高者当选，完全确定，同一 prompt 每次生成一字不差。数学上它是 T → 0 的极限；工程实现里就是一条 <code>if T == 0: argmax</code> 的特殊处理，连 softmax 都不用算。这叫贪心解码（greedy）。</p>
+    <p><b>T &gt; 0：一律按概率抽签。</b>不管 T 是 0.01 还是 2，本质完全一样——都是随机采样，<b>温度只影响概率分布的悬殊程度，不制造随机、也不关闭随机</b>。哪怕 T = 0.01，「香蕉」在理论上仍有非零概率被抽中（约 e^(−0.9/0.01) ≈ 10⁻³⁹，小到宇宙尺度上也见不到一次，但机制上它一直在签筒里）。「确定」只存在于 T = 0 这一个特判点上。</p>
+  </div>
+  <p>贪心的确定性是双刃剑：适合数学、代码、信息抽取；但容易复读和僵硬——一旦落入循环就出不来，所以写作类任务不用它。</p>
+
+  <h2>4 · 随机从哪一步进来：抽签</h2>
+  <p>采样的机制：把 V 个概率排成一条 0 → 1 的线段，掷一个 0 ~ 1 之间的均匀随机数 u，<b>落进谁的区间就选谁</b>。骰子只在这一步出现。温度在骰子掷出之前调整各段的长度：</p>
+  <div class="pbars">
+    <div class="prow"><span class="plab">T = 0 贪心</span>
+      <div class="pbar"><span class="ps a" style="width:100%">苹果 1.00 —— 不掷骰子，直接取最大</span></div></div>
+    <div class="prow"><span class="plab">T = 0.5</span>
+      <div class="pbar"><span class="ps a" style="width:84.6%">苹果 .846</span><span class="ps b" style="width:14%">香蕉 .140</span><span class="ps r" style="width:1.4%"></span></div></div>
+    <div class="prow"><span class="plab">T = 1</span>
+      <div class="pbar"><span class="ps a" style="width:58.3%">苹果 .583</span><span class="ps b" style="width:23.7%">香蕉 .237</span><span class="ps c" style="width:4.3%"></span><span class="ps r" style="width:13.7%">其余 7 个 .137</span></div></div>
+    <div class="prow"><span class="plab">T = 2</span>
+      <div class="pbar"><span class="ps a" style="width:32%">苹果 .320</span><span class="ps b" style="width:20.4%">香蕉 .204</span><span class="ps c" style="width:8.7%">甜 .087</span><span class="ps r" style="width:38.9%">其余 6 个 .389</span></div></div>
+  </div>
+  <p class="small muted">段长的算法就是第 2 节的三步：T = 0.5 时全体 logits ×2 再 softmax（苹果 e^6.2 = 492.7，Σ = 582.2，492.7/582.2 = 0.846）；T = 2 时全体 ÷2（苹果 e^1.55 = 4.71，Σ = 14.72，4.71/14.72 = 0.320）。</p>
+  <p><b>「加了 temperature 就变随机」的准确含义</b>——掷同一个随机数 u = 0.70：T = 0.5 时落在苹果段内（0 ~ 0.846）；T = 1 时落进香蕉段（0.583 ~ 0.820）；T = 2 时越过苹果、香蕉、甜、我（累计 0.690），落进「，」的地盘（0.690 ~ 0.765），输出一个逗号。<b>同一个骰子，温度不同，地价不同，命运不同。</b>骰子一直都在，温度决定它有多大杀伤力。</p>
+
+  <h2>5 · 温度的全域图景：从必然到瞎猜</h2>
+  <p>一个公式看穿所有情形——<b>任意两家的概率之比 = e^(分差/T)</b>（分母 Σ 在做比时约掉了）。分差固定是 0.9（苹果 − 香蕉），T 只是它的分母：</p>
+  <div class="tblwrap">
+  <table class="vt">
+    <tr><th>温度</th><th>苹果</th><th>香蕉</th><th>的</th><th style="text-align:left">读法</th></tr>
+    <tr><td>T = 0</td><td>1.000</td><td>0</td><td>0</td><td style="text-align:left;font-family:var(--sans)">one-hot：强者通吃（必然）</td></tr>
+    <tr><td>T = 0.5</td><td>0.846</td><td>0.140</td><td>0.000</td><td style="text-align:left;font-family:var(--sans)">比模型本身更自信</td></tr>
+    <tr class="hl"><td>T = 1</td><td>0.583</td><td>0.237</td><td>0.004</td><td style="text-align:left;font-family:var(--sans)">模型本色：训练学的就是这个分布</td></tr>
+    <tr><td>T = 2</td><td>0.320</td><td>0.204</td><td>0.025</td><td style="text-align:left;font-family:var(--sans)">分差被压扁，长尾抬头</td></tr>
+    <tr><td>T = 5</td><td>0.171</td><td>0.143</td><td>0.062</td><td style="text-align:left;font-family:var(--sans)">肉眼可见地滑向均匀</td></tr>
+    <tr><td>T → ∞</td><td>0.100</td><td>0.100</td><td>0.100</td><td style="text-align:left;font-family:var(--sans)">uniform：人手 1/V，纯瞎猜</td></tr>
+  </table>
+  </div>
+  <p>三个极端各有一句话：<b>T → 0</b>，分差 ÷ 极小数被放大到无穷，概率比 → ∞，最高分独占整条线段；<b>T = 1</b>，softmax(z/1) 就是 softmax(z)，这是模型训练时真实学到的分布；<b>T → ∞</b>，所有 z/T → 0，e⁰ = 1 人手一份，每个 token 得 1/V = 0.1——连 logit 为 −2.0 的「的」也拿 10%，模型学到的一切信息被彻底抹平。所以调低温度是在「比模型更自信」，调高温度是在<b>稀释模型的置信度</b>——「高温更有创意」和「高温更容易胡说」是同一件事的两面。</p>
+
+  <h2>6 · 自检与工程注脚</h2>
+  <div class="panel">
+    <p class="pt">两条自检规则（不用算分母就能验表）</p>
+    <p>① 任意两家概率比 = e^(分差/T)。验证：T = 1 时苹果/香蕉 = 0.583/0.237 = 2.46 = e^0.9 ✓</p>
+    <p>② 每行概率之和必须为 1（0.583 + 0.237 + 0.043 + 0.137 = 1.000 ✓）——分母 Σ 的存在就是为了这个。</p>
+  </div>
+  <p>自己重算整张表只要三行（改 T、改 logits 随意实验）：</p>
+  <pre><code>import math
+z = {'苹果':3.1,'香蕉':2.2,'甜':0.5,'我':0.3,'，':0.2,'吃':0.1,'很':-0.4,'爱':-0.8,'EOS':-1.2,'的':-2.0}
+T = 2
+e = {k: math.exp(v/T) for k, v in z.items()}; s = sum(e.values())
+print({k: round(v/s, 3) for k, v in e.items()})</code></pre>
+  <p class="small muted">工程注脚：API 通常把 T 限制在 0 ~ 2，再高就是花钱买瞎猜；实践中很少裸抽签，会配 top-p / top-k 先把长尾逐出签筒再抽——防止高温下抽中「的」这类明显不通的尾巴；创意任务常用 T ≈ 0.7 ~ 1.0，数学与代码用 T = 0。</p>
+</div>
+
+<footer>
+  <p>← 返回 <a href="./zh.html">《玩具 GPT 全流程走查》</a>　·　本篇对应课程 en.md 的 Decoding strategies 与 Step 4: sampling 两节，logits 数值取自走查的玩具设定。</p>
+</footer>
+
+</body>
+</html>
