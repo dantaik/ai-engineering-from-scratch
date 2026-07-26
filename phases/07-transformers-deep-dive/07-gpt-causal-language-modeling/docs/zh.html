@@ -383,6 +383,7 @@
   </div>
 
   <p style="margin-top:1rem">「吃」行的读法：它决定听 50% 的自己、30% 的「爱」、20% 的「我」，按权重对各家的 V 向量加权求和——「吃」的新向量里从此掺进了前文的信息。右上角被遮住的三个格子就是「因果」二字的全部含义：任何位置只能看自己和过去。这张表也正是注意力 O(n²) 成本的本体。</p>
+  <p class="small muted">注意力为什么长这样——Q/K/V 为何是三个矩阵、√d 缩放、−∞ 掩码、多头与 GQA——单独成篇：<a href="../../02-self-attention-from-scratch/docs/zh.html">附录 · 注意力机制单独拆解 →</a></p>
 
   <h3>块内单元 B：FFN——各自消化，互不交流<span class="shape">3×4 → 3×4</span></h3>
   <p>每行独立通过一个小网络：4 维 → 16 维（升维 4 倍）→ 非线性 → 压回 4 维。不看别的行，就地加工刚从注意力收集来的信息。两个单元都是残差式的：输出 = 输入 + 修正量——每层只在原坐标上「修一笔」，这是几十层深的网络不失真的关键。</p>
@@ -573,6 +574,44 @@
   <div class="panel">
     <p>真实的 Llama-3-8B 就是同一张图，把数字换成 d = 4096、L = 32、V = 128,256，再把注意力换成多头（4096 维切成 32 个头并行）而已——8B 个参数、一样的入口出口、一样的 n×d 形状恒定、一样的「粘回队尾」循环。<b>你在这个 656 参数玩具上建立的每一条直觉，原样适用。</b></p>
   </div>
+
+  <h2 id="tied">6 · 一张表还是两张表：入口的 E 和出口的 U</h2>
+  <p>总账里「输出 4×10（有的模型两者共享一张表）」这半句话，值得单独拆开。先把两端摆在一起看：</p>
+  <pre><code>入口  E（V×d = 10×4）  拿 ID 查出一行 —— token 作为「输入」时的坐标
+出口  U（d×V = 4×10）  拿末行向量去乘 —— 每一列是 token 作为「候选输出」时的模板
+                       logit_i = h · U 的第 i 列（点积 = 方向对齐程度）</code></pre>
+  <p>注意 U 的本质：它的<b>每一列也是「某个 token 的 d 维表示」</b>——算 logits 就是拿当前思路向量 h 和 V 个候选词的模板逐个做点积，问「我的思路和哪个词最对齐」。既然两张表干的都是「给每个 token 学一个 d 维向量」，就存在两种合法设计：</p>
+
+  <h3>Tied（权重共享）：不是两张同步的表，是同一块内存</h3>
+  <pre><code>self.embed   = nn.Embedding(V, d)            # E：V×d
+self.lm_head = nn.Linear(d, V, bias=False)   # U：Linear 恰好也按 V×d 存权重
+self.lm_head.weight = self.embed.weight      # 指针赋值，不是拷贝</code></pre>
+  <p>赋值之后两者是<b>同一个 tensor</b>：不存在「保持一致」的同步动作，因为只有一份数字，U ≡ Eᵀ 是恒等式而非训练结果。梯度视角（第二阶段反向传播的直觉）：输出端每一步都给全表 V 行梯度——softmax 的分母牵连所有候选词；输入端每一步只给本 batch 出现过的词那几行梯度——查表没查到的行碰都不碰。Tied 时两股形状和频率都不同的梯度流汇入同一张表，互为正则化。玩具若 tie，参数从 656 → 616。</p>
+
+  <h3>Untied（独立参数）：值必然不同，连「接近转置」都不保证</h3>
+  <p>两份参数各自初始化、各自被梯度更新，<b>没有任何机制让 U 靠近 Eᵀ</b>——训练完的数值就是不同的，这不是存储冗余，是刻意解耦。角色本就有偏移：E 的第 i 行回答「这个词出现在输入里是什么意思」（「的」作为输入几乎是语法胶水），U 的第 i 列回答「接下来该不该输出这个词」（「的」的输出模板要刻画『什么语境需要接个的』）。解耦让两端各学各的，大模型上效果略好。</p>
+  <p class="small muted">顺带校正一个易混词：tied 的关系是转置（transpose，行列互换），不是逆矩阵——E 是 10×4 的非方阵，根本没有逆。</p>
+
+  <h3>谁选哪个：一道算术题，不是流派之争</h3>
+  <div class="tblwrap">
+  <table class="vt">
+    <tr><th>选择</th><th>代表模型</th></tr>
+    <tr><td><b>Tied</b><br><span class="small muted">一张表</span></td><td>GPT-1/2/3 一脉、BERT、OPT、BLOOM（176B 也 tie）、Gemma 全系 1/2/3（含 27B）、Llama 3.2 的 1B/3B、Qwen2.5/Qwen3 的 0.5B~4B、SmolLM、MiniCPM、Command R+（104B，罕见的大模型 tie）</td></tr>
+    <tr><td><b>Untied</b><br><span class="small muted">两张表</span></td><td>Llama 1/2/3.1 全系（8B/70B/405B）、Mistral/Mixtral、Qwen2.5/Qwen3 的 7B/8B 及以上、DeepSeek-V2/V3/R1、Phi-3、Yi、GPT-NeoX/Pythia、OLMo 2、T5 v1.1</td></tr>
+  </table>
+  </div>
+  <p>分界线不在厂商也不在新旧，而在<b>一张表（V×d 个数）占总参数的比例</b>——untied 要多付整整一份：</p>
+  <div class="tblwrap">
+  <table class="vt">
+    <tr><th>模型</th><th>一张表</th><th>占总参数</th><th>选择</th></tr>
+    <tr><td>Llama-3.2-1B</td><td class="small">128256 × 2048 ≈ 0.26B</td><td><b>21%</b></td><td>tie——再复制一份太奢侈</td></tr>
+    <tr><td>Llama-3.1-8B</td><td class="small">128256 × 4096 ≈ 0.53B</td><td>6.5%</td><td>untie——多付一份买解耦，值</td></tr>
+    <tr><td>Gemma-3-270M</td><td class="small">262144 × 640 ≈ 0.17B</td><td><b>62%</b></td><td>tie 不是选择，是生存必需</td></tr>
+    <tr><td>Gemma-2-27B</td><td class="small">256K 词表 ≈ 1.18B</td><td>4.3%</td><td>仍 tie——超大词表把账拉回来了</td></tr>
+    <tr><td>DeepSeek-V3（671B）</td><td class="small">129280 × 7168 ≈ 0.93B</td><td>0.1%</td><td>untie——白拿解耦收益</td></tr>
+  </table>
+  </div>
+  <p class="small muted">同一家在自家系列里按尺寸切换（Llama 3.2 小 tie / 3.1 大 untie，Qwen3 的 4B 及以下 tie / 8B 起 untie），最能说明这是算术不是信仰。两个有故事的特例：T5 v1.0 tied → v1.1 明确解绑并验证更好，成了大模型默认 untie 的依据之一；Command R+ 用 256K 大词表，账算下来和 Gemma 一样，104B 还在 tie。闭源前沿模型（GPT-4/5、Claude、Gemini）架构不公开，绑不绑无从考证。<b>自查方法</b>：任何开源模型 config.json 里的布尔字段 <code>tie_word_embeddings</code>——true 一张表，false 两张。</p>
 </div>
 
 <footer>

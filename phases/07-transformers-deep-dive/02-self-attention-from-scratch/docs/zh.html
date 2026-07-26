@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>注意力机制单独拆解：查询、键、值与多头</title>
+<style>
+  :root{
+    --bg:#FFFFFF; --ink:#1A1A1A; --muted:#6E6E6E; --line:#E3E3E3; --rule:#2E2E2E;
+    --code-bg:#F6F6F6; --cell:#E8E8E8; --cell-ink:#2A2A2A; --diag:#ADADAD; --diag-ink:#111111;
+    --chip-old-ink:#9A9A9A; --out-bg:#1A1A1A; --out-ink:#FFFFFF;
+    --sans:"PingFang SC","Microsoft YaHei","Noto Sans CJK SC",-apple-system,"Segoe UI",sans-serif;
+    --mono:"SF Mono",ui-monospace,Consolas,"JetBrains Mono",Menlo,monospace;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --bg:#131313; --ink:#DCDCDC; --muted:#909090; --line:#2C2C2C; --rule:#C9C9C9;
+      --code-bg:#1C1C1C; --cell:#2E2E2E; --cell-ink:#D6D6D6; --diag:#606060; --diag-ink:#F2F2F2;
+      --chip-old-ink:#787878; --out-bg:#E4E4E4; --out-ink:#141414;
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#131313; --ink:#DCDCDC; --muted:#909090; --line:#2C2C2C; --rule:#C9C9C9;
+    --code-bg:#1C1C1C; --cell:#2E2E2E; --cell-ink:#D6D6D6; --diag:#606060; --diag-ink:#F2F2F2;
+    --chip-old-ink:#787878; --out-bg:#E4E4E4; --out-ink:#141414;
+  }
+  :root[data-theme="light"]{
+    --bg:#FFFFFF; --ink:#1A1A1A; --muted:#6E6E6E; --line:#E3E3E3; --rule:#2E2E2E;
+    --code-bg:#F6F6F6; --cell:#E8E8E8; --cell-ink:#2A2A2A; --diag:#ADADAD; --diag-ink:#111111;
+    --chip-old-ink:#9A9A9A; --out-bg:#1A1A1A; --out-ink:#FFFFFF;
+  }
+
+  body{background:var(--bg);color:var(--ink);font-family:var(--sans);
+    font-size:14px;line-height:1.85;margin:0;padding:0 20px 80px;-webkit-font-smoothing:antialiased;}
+  .col{max-width:680px;margin:0 auto;}
+
+  header.hd{max-width:680px;margin:52px auto 0;padding-bottom:1.2rem;border-bottom:1px solid var(--rule);}
+  .kicker{font-family:var(--mono);font-size:11px;letter-spacing:.08em;color:var(--muted);}
+  h1{font-size:20px;font-weight:700;margin:.5rem 0 .6rem;letter-spacing:.01em;}
+  .specline{font-family:var(--mono);font-size:12px;color:var(--muted);}
+  .thesis{margin:1.2rem 0 0;padding:2px 0 2px 16px;border-left:2px solid var(--rule);color:var(--ink);}
+  .thesis p{margin:0;font-size:13.5px;}
+
+  h2{font-family:var(--mono);font-size:14px;font-weight:700;letter-spacing:.02em;
+    border-top:1px solid var(--line);padding-top:1.8rem;margin:3rem 0 1rem;}
+  h3{font-size:13.5px;font-weight:700;margin:1.9rem 0 .55rem;}
+  p{margin:.8rem 0;}
+  .muted{color:var(--muted);}
+  .small{font-size:12.5px;}
+
+  .shape{font-family:var(--mono);font-size:11px;border:1px solid var(--line);
+    border-radius:3px;padding:.1em .55em;color:var(--muted);white-space:nowrap;vertical-align:.14em;margin-left:.55em;font-weight:400;}
+
+  pre{background:var(--code-bg);border:1px solid var(--line);border-radius:4px;
+    padding:12px 16px;overflow-x:auto;font-family:var(--mono);font-size:12px;line-height:1.75;margin:1rem 0;}
+  code{font-family:var(--mono);font-size:.92em;background:var(--code-bg);
+    border-radius:3px;padding:.06em .35em;}
+  pre code{background:none;padding:0;}
+
+  .panel{border-left:2px solid var(--rule);padding:2px 0 2px 16px;margin:1.3rem 0;}
+  .panel p{margin:.45rem 0;font-size:13.5px;}
+  .panel .pt{font-family:var(--mono);font-size:12px;font-weight:700;margin:0 0 .35rem;}
+
+  .seq{display:flex;gap:.45rem;flex-wrap:wrap;align-items:center;margin:.55rem 0;}
+  .tok{display:inline-flex;align-items:center;justify-content:center;min-width:2.4em;height:2.2em;
+    padding:0 .5em;border-radius:4px;background:var(--cell);color:var(--cell-ink);
+    border:1px solid transparent;font-size:13px;}
+  .tok.out{background:var(--out-bg);color:var(--out-ink);}
+  .tok.id{background:transparent;border:0;color:var(--muted);font-family:var(--mono);font-size:12px;}
+  .arrow{color:var(--muted);font-size:13px;}
+
+  table.vt{border-collapse:collapse;width:100%;margin:.9rem 0;font-size:13px;}
+  table.vt th{text-align:left;font-family:var(--mono);font-size:11px;letter-spacing:.05em;color:var(--muted);
+    border-bottom:1px solid var(--rule);padding:.4em .7em;font-weight:400;}
+  table.vt td{border-bottom:1px solid var(--line);padding:.55em .7em;vertical-align:middle;font-variant-numeric:tabular-nums;}
+  .tblwrap{overflow-x:auto;}
+  td.num{font-family:var(--mono);font-size:12.5px;}
+
+  table.mtx{border-collapse:separate;border-spacing:4px;margin:.7rem 0 .3rem;
+    font-variant-numeric:tabular-nums;font-family:var(--mono);}
+  table.mtx th{font-size:11px;color:var(--muted);font-weight:400;padding:0 4px 3px;font-family:var(--sans);}
+  table.mtx th.rh{text-align:right;padding-right:9px;font-size:13px;color:var(--ink);}
+  table.mtx td{width:66px;height:44px;text-align:center;border-radius:3px;font-size:12.5px;}
+  td.on{background:var(--cell);color:var(--cell-ink);}
+  td.diag{background:var(--diag);color:var(--diag-ink);}
+  td.off{background:transparent;border:1px dashed var(--line);color:var(--chip-old-ink);}
+
+  .legend{display:flex;gap:1.2rem;flex-wrap:wrap;font-size:12px;color:var(--muted);margin:.45rem 0 0;}
+  .sw{display:inline-block;width:.85em;height:.85em;border-radius:2px;vertical-align:-.1em;margin-right:.4em;}
+  .sw.dash{border:1px dashed var(--line);background:transparent;}
+
+  footer{max-width:680px;margin:3.2rem auto 0;font-size:12px;color:var(--muted);
+    border-top:1px solid var(--line);padding-top:1.2rem;}
+  a{color:var(--ink);}
+  a:focus-visible{outline:2px solid var(--rule);outline-offset:2px;}
+</style>
+</head>
+<body>
+
+
+<header class="hd">
+  <div class="kicker">PHASE 7 · 02 SELF-ATTENTION FROM SCRATCH · 中文笔记</div>
+  <h1>注意力机制单独拆解：查询、键、值与多头</h1>
+  <div class="specline">前置：玩具 GPT 走查（那里把注意力放在整条流水线里过了一遍）　本篇例子 d_k = d_v = 2　真账 Llama-3-8B</div>
+  <div class="thesis">
+    <p>注意力回答一个问题：<b>当前这个词，该从前文哪些词那里搬多少信息</b>。答案不是学死的参数，而是每次前向按内容当场算出来的一张权重表；Q、K、V 三个投影矩阵是它的全部道具，softmax(QKᵀ/√d<sub>k</sub> + M)V 是它的全部数学。</p>
+  </div>
+</header>
+
+<div class="col">
+  <h2>1 · 它在整栋楼里的位置：搬运，不是加工</h2>
+  <p>每个 transformer 块只有两个单元，分工干净：<b>注意力跨行搬运</b>（token 之间唯一的信息通道），<b>FFN 逐行加工</b>（每行独立消化，互不交流）。走查页已经从 KV cache 反推出这一点——正因为前文行永不回头看新行，它们的表示才能缓存复用。本篇把搬运这一半单独拎出来，回答「为什么长这样」。</p>
+  <div class="panel">
+    <p class="pt">先钉死一个区分：参数 vs 激活</p>
+    <p>W<sub>Q</sub>、W<sub>K</sub>、W<sub>V</sub>、W<sub>O</sub> 是<b>参数</b>——训练学出来、写死在权重文件里、对所有输入相同。而那张「谁看谁、看多少」的注意力权重表是<b>激活</b>——每个新输入当场重算、用完即弃、句句不同。「动态路由」四个字的全部含义就在这：<b>路由表不是学出来的常数，是运行时按内容算出来的函数值</b>。</p>
+  </div>
+
+  <h2>2 · 它要解决的问题：按内容寻址</h2>
+  <p>「那只猫追着球跑，它累了。」——「它」指谁？人会立刻回答猫，理由是语义（球不会累），不是位置。任何写死的规则——「看前一个词」「看第 3 个位置」——都会在下一个句子上翻车：相关性本身取决于内容，所以<b>相关性必须按内容当场计算</b>。</p>
+  <p>用什么算？老朋友：<b>点积 = 方向对齐程度</b>（第一阶段线性代数，在嵌入、在出口打分之后，这是它第三次上岗）。给每个词一个向量，两两做点积，就得到一张按内容算出来的相关性表——这就是注意力的骨架。剩下的问题只有一个：拿哪个向量去点积？</p>
+
+  <h2>3 · 为什么是三个矩阵：找人、被找、交货是三件事</h2>
+  <p>每行向量 x 进入注意力时分身三份，各由一个参数矩阵投影而来：</p>
+  <pre><code>q = x · W_Q   我在找什么        （query   ：主动发问的检索条）
+k = x · W_K   我以什么面目被找   （key     ：挂给别人看的标签）
+v = x · W_V   找到我后我交出什么 （value   ：真正被搬走的内容）</code></pre>
+  <p>上一节两张表的教训在这里重演：<b>同一个对象，角色不同就需要不同的表示</b>——入口 E 和出口 U 是两个角色，这里干脆一分为三。反过来想更清楚：如果不分家，直接拿 x 自己当 q、k、v，会得两种病——</p>
+  <p><b>对称病</b>：点积可交换，x<sub>猫</sub>·x<sub>球</sub> ≡ x<sub>球</sub>·x<sub>猫</sub>，「猫看球」和「球看猫」被迫永远同分，可指代关系明明是有方向的。<b>自恋病</b>：对角线 x·x = ‖x‖² 天然是全表大户，每个词最关注自己，搬运通道形同虚设。W<sub>Q</sub> ≠ W<sub>K</sub> 一举治好两种病（打分变成 x<sub>i</sub>W<sub>Q</sub>·x<sub>j</sub>W<sub>K</sub>，既不对称、对角线也不再特殊）；W<sub>V</sub> 则让「交付的内容」独立于「检索用的标签」——图书馆里书脊标签和书的内容本就不是一回事。</p>
+
+  <h2>4 · 手算一遍：分数 → 缩放 → 掩码 → softmax → 加权和</h2>
+  <p>三个 token「猫 追 球」，d<sub>k</sub> = d<sub>v</sub> = 2。q/k/v 本应由 x 乘三个 W 得到（走查页演过那一步），这里直接给出投影结果，专注机制本身。数字是编造的教具，全部经程序复算：</p>
+  <div class="tblwrap">
+  <table class="vt">
+    <tr><th>位置</th><th>token</th><th>q（找什么）</th><th>k（被怎么找）</th><th>v（交什么货）</th></tr>
+    <tr><td>1</td><td><span class="tok">猫</span></td><td class="num">(0.6, −0.1)</td><td class="num">(1.0, 0.2)</td><td class="num">(0.8, −0.2)</td></tr>
+    <tr><td>2</td><td><span class="tok">追</span></td><td class="num">(0.9, 0.8)</td><td class="num">(−0.4, 1.0)</td><td class="num">(−0.1, 0.9)</td></tr>
+    <tr><td>3</td><td><span class="tok">球</span></td><td class="num">(1.2, 0.4)</td><td class="num">(0.3, −0.5)</td><td class="num">(0.4, 0.3)</td></tr>
+  </table>
+  </div>
+  <p>每个位置拿自己的 q，去和<b>自己及之前</b>所有位置的 k 点积。三个位置三种处境：</p>
+  <p><b>位置 1「猫」</b>：候选只有自己。softmax 在单元素上恒等于 1，输出就是 v₁ = (0.8, −0.2)。<span class="muted">第一个 token 永远没得选——它的注意力输出只含它自己。</span></p>
+  <p><b>位置 2「追」</b>：两个候选。q₂·k₁ = 1.06，q₂·k₂ = 0.44；除以 √2 得 0.750 和 0.311；softmax 后权重 0.608 / 0.392；输出 = 0.608·v₁ + 0.392·v₂ = (0.447, 0.231)。</p>
+  <p><b>位置 3「球」</b>：全表登场，逐步走完——</p>
+  <div class="tblwrap">
+  <table class="vt">
+    <tr><th>步骤</th><th>对「猫」</th><th>对「追」</th><th>对「球」（自己）</th></tr>
+    <tr><td class="small muted">① 点积 q₃·k<sub>j</sub></td><td class="num">1.28</td><td class="num">−0.08</td><td class="num">0.16</td></tr>
+    <tr><td class="small muted">② ÷√d<sub>k</sub> = √2</td><td class="num">0.905</td><td class="num">−0.057</td><td class="num">0.113</td></tr>
+    <tr><td class="small muted">③ e<sup>x</sup></td><td class="num">2.472</td><td class="num">0.945</td><td class="num">1.120　（合计 Z = 4.537）</td></tr>
+    <tr><td class="small muted">④ 权重 = e<sup>x</sup>/Z</td><td class="num"><b>0.545</b></td><td class="num">0.208</td><td class="num">0.247　（和 = 1）</td></tr>
+  </table>
+  </div>
+  <p>⑤ 按权重把三家的 v 加权求和：out₃ = 0.545·v₁ + 0.208·v₂ + 0.247·v₃ = <b>(0.514, 0.153)</b>。</p>
+  <p>读法：「球」的查询向量和「猫」的键高度同向（点积 1.28 一骑绝尘），于是新的「球」向量里 54.5% 的成分从「猫」搬来——「球」这一行从此记住了「有只猫在追我」。<b>输出永远是前文 value 的加权平均（权重非负、和为 1），权重由「我的问题」和「你的标签」的对齐程度决定。</b></p>
+  <div class="panel">
+    <p class="pt">公式收束</p>
+    <p><code>Attention(Q, K, V) = softmax(QKᵀ/√d_k + M) · V</code>　——　QKᵀ 是①（所有 q 对所有 k 的点积表，n×n），√d<sub>k</sub> 是②，M 是下文的因果掩码，softmax 是③④（逐行），最后乘 V 是⑤。你刚才手算的就是这一行符号的全部内容。</p>
+  </div>
+
+  <h2>5 · 为什么除以 √d_k：写死在架构里的温度</h2>
+  <p>softmax 前先除一个数——这个动作你在采样那篇见过：<b>除数就是温度</b>。√d<sub>k</sub> 是一个不学习、不可调、写死在架构里的固定温度，专治一种病：</p>
+  <p>点积是 d<sub>k</sub> 个乘积之和。若 q、k 各分量独立且方差为 1，则 q·k 的方差恰好是 d<sub>k</sub>——<b>维度越高，裸分天然越悬殊</b>。d<sub>k</sub> = 64 时典型分数已到 ±8，两个候选轻松差出 16 个 logit，概率比 e¹⁶ ≈ 890 万 : 1——softmax 饱和成独热分布，梯度趋近于 0，训练学不动（这正是采样篇里 T 太小的画面，只不过发生在模型内部）。除以 √64 = 8，方差拉回 1，softmax 回到灵敏区。</p>
+  <p class="small muted">工程注脚：这是训练稳定性设计——推理时它只是个常数，但没有它，训练在第一步就瘫在饱和区里。</p>
+
+  <h2>6 · 因果掩码：把未来写成 −∞</h2>
+  <p>解码器的规矩「不许看未来」不是靠 if 语句，而是在 softmax <b>之前</b>把非法格子的分数加上 −∞：</p>
+  <div class="tblwrap">
+  <table class="mtx">
+    <tr><th></th><th>看「猫」</th><th>看「追」</th><th>看「球」</th></tr>
+    <tr><th class="rh">「猫」行</th><td class="diag">0</td><td class="off">−∞</td><td class="off">−∞</td></tr>
+    <tr><th class="rh">「追」行</th><td class="on">0</td><td class="diag">0</td><td class="off">−∞</td></tr>
+    <tr><th class="rh">「球」行</th><td class="on">0</td><td class="on">0</td><td class="diag">0</td></tr>
+  </table>
+  </div>
+  <div class="legend">
+    <span><span class="sw" style="background:var(--cell)"></span>0 = 分数原样通过</span>
+    <span><span class="sw dash"></span>−∞ = 该格概率恰好为 0</span>
+  </div>
+  <p style="margin-top:1rem">为什么在分数上动手，而不是算完概率再清零？因为 e<sup>−∞</sup> = 0（采样篇的极限又用上了）：被掩的格子经 softmax 精确得 0，<b>且每行剩余概率自动归一</b>——若在概率上清零，「和 = 1」被破坏，还得手工再归一化。一个 −∞ 同时办妥两件事。</p>
+  <p class="small muted">这张小小的上三角掩码撑起了走查页的两个结论：训练时一次前向 = n 道并行考题（每行看不到自己的答案），生成时前文表示永不改变 = KV cache 合法。</p>
+
+  <h2>7 · 多头：32 张粗表，胜过 1 张细表</h2>
+  <p>真实模型不做一次大注意力，而是把 d 切成 h 份并行做 h 次小注意力。Llama-3-8B：d = 4096 切成 32 个头，每头 128 维，各自独立跑完上面全套（各头的固定温度是 √128 ≈ 11.3），结果拼接回 4096 维再过 W<sub>O</sub> 混合。</p>
+  <div class="panel">
+    <p class="pt">多头 ≠ 多参数</p>
+    <p>W<sub>Q</sub>/W<sub>K</sub>/W<sub>V</sub>/W<sub>O</sub> 的总形状不因头数改变——多头只是把大矩阵按列分成 32 组，各组独立打分而已。参数账一分钱不多花，多出来的是<b>路由的多样性</b>。</p>
+  </div>
+  <p>为什么多样性值钱？一个头一张 n×n 权重表，每行 softmax 和为 1——这是硬约束：一张表想同时「盯住语法主语」又「盯住指代对象」，两股注意力就会互相稀释。32 个头 = 同时维护 32 张互不干扰的关系表，各学各的模式（对训练好的模型做解剖，确实能观察到分工：有的头专盯前一个词，有的头专做指代回连，有的头几乎只看句首）。单头 4096 维是一张超精细的表，但只有一张；32 张 128 维的粗表赢在能同时表达 32 种「谁看谁」。</p>
+  <p class="small muted">玩具走查是单头（d = 4 切不动），所以那里看不见这一层。</p>
+
+  <h2>8 · 现代形态：围绕 KV cache 的三次手术</h2>
+  <p>生成时 K、V 要进缓存（Q 用完即弃），缓存大小 = 2 × 层数 × KV 总维度 × 上下文长度 × 每数字节数。上下文一长，这笔显存迅速压过参数本身，于是现代注意力的改造全都冲着 KV 来：</p>
+  <div class="tblwrap">
+  <table class="vt">
+    <tr><th>手术</th><th>做法</th><th>代价与收益</th></tr>
+    <tr><td><b>GQA</b><br><span class="small muted">分组查询</span></td><td>32 个 Q 头共享 8 组 K/V（Llama-3-8B：W<sub>K</sub>/W<sub>V</sub> 从 4096×4096 缩到 4096×1024）</td><td>cache 直接 ÷4：FP16 下每 token 128 KB，128K 上下文 ≈ <b>16 GB</b>（不做 GQA 是 64 GB）；质量几乎无损</td></tr>
+    <tr><td><b>MQA</b><br><span class="small muted">多查询</span></td><td>全部 Q 头共享 1 组 K/V（GQA 的极端版）</td><td>cache ÷32，但质量有可感损失——GQA 正是它和全量之间的折中</td></tr>
+    <tr><td><b>MLA</b><br><span class="small muted">潜在注意力</span></td><td>DeepSeek 系：K/V 先压进一个低秩隐向量，用时再展开</td><td>cache 再砍约一个数量级，代价是多一次展开计算</td></tr>
+  </table>
+  </div>
+  <p>还有一刀不动数学、只动实现：<b>FlashAttention</b> 分块计算，让 n×n 的分数表永远不完整落进显存——O(n²) 的计算量还在，但显存瓶颈解除。而 O(n²) 本身动不了：每个新词都要和全部前文打一遍分，这就是长上下文 prefill 贵、「首 token 慢」的物理根源（成本篇那笔账的实体）。</p>
+
+  <h2>9 · 参数账：注意力在 Llama-3-8B 里占多少</h2>
+  <div class="tblwrap">
+  <table class="vt">
+    <tr><th>矩阵</th><th>形状</th><th>参数量</th></tr>
+    <tr><td>W<sub>Q</sub></td><td class="num">4096 × 4096</td><td class="num">16.78M</td></tr>
+    <tr><td>W<sub>K</sub></td><td class="num">4096 × 1024<span class="small muted">（GQA 缩过）</span></td><td class="num">4.19M</td></tr>
+    <tr><td>W<sub>V</sub></td><td class="num">4096 × 1024</td><td class="num">4.19M</td></tr>
+    <tr><td>W<sub>O</sub></td><td class="num">4096 × 4096</td><td class="num">16.78M</td></tr>
+    <tr><td colspan="2"><b>每层合计 × 32 层</b></td><td class="num"><b>41.94M × 32 ≈ 1.34B</b></td></tr>
+  </table>
+  </div>
+  <pre><code>注意力     1.34B   16.7%   ← 本篇的全部主角
+FFN        5.64B   70.2%   ← 3 × 4096 × 14336 × 32
+两端嵌入   1.05B   13.1%   ← untied，两张表各付一份（上一节！）
+归一化等   0.00B   零头
+────────────────────────
+合计      ≈ 8.030B          与官方 8.03B 对上 ✓</code></pre>
+  <p>一个反差值得记住：这架构以 attention 命名（Attention Is All You Need），账上七成参数却在 FFN——<b>搬运本身不贵，贵的是搬来之后的加工；但全模型只有搬运这一个环节跨位置</b>。删掉它，每个词永远活在自己的字典释义里。</p>
+
+  <div class="panel">
+    <p class="pt">本篇故意没讲的一件事</p>
+    <p>把上面小例子的三行 k/v 连同掩码一起换个顺序，每个位置的输出分毫不变——<b>点积注意力天生对顺序失明</b>，它只认内容不认座位。可「猫追球」和「球追猫」显然不是一个意思。谁告诉注意力「猫在球前面」？位置编码（现代主流是 RoPE）——那是下一课（04-positional-encoding）的主角，也是玩具走查里「每行再加上位置信息」一句话背后的整个世界。</p>
+  </div>
+</div>
+
+<footer>
+  <p>本页是 phases/07-transformers-deep-dive/02-self-attention-from-scratch 的中文笔记。小例子数字为编造教具、已程序复算；Llama-3-8B 各矩阵形状按官方公开配置推算，分账合计与官方总参数 8.03B 一致。整条流水线的上下文见<a href="../../07-gpt-causal-language-modeling/docs/zh.html">玩具 GPT 全流程走查</a>；softmax 与温度的完整拆解见<a href="../../07-gpt-causal-language-modeling/docs/zh-softmax-temperature.html">从裸分到骰子</a>。</p>
+</footer>
+
+</body>
+</html>
