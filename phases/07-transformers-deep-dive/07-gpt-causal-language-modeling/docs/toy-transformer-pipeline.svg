@@ -1,0 +1,207 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 880 1470" font-family="'PingFang SC','Microsoft YaHei','Noto Sans CJK SC',sans-serif">
+  <defs>
+    <marker id="ar" markerWidth="10" markerHeight="8" refX="8" refY="3" orient="auto">
+      <path d="M0,0 L8,3 L0,6 z" fill="#5F6368"/>
+    </marker>
+  </defs>
+  <rect x="0" y="0" width="880" height="1470" fill="#FFFFFF"/>
+
+  <text x="440" y="40" text-anchor="middle" font-size="21" font-weight="bold" fill="#202124">玩具 Transformer 流水线：一次前向传播</text>
+  <text x="440" y="64" text-anchor="middle" font-size="13" fill="#5F6368">d = 4（宽度）　L = 3（层数）　V = 10（词表）　输入 = “我 爱 吃”（n = 3）</text>
+
+  <!-- A. tokenize -->
+  <rect x="70" y="92" width="200" height="44" rx="8" fill="#F1F3F4" stroke="#DADCE0"/>
+  <text x="170" y="119" text-anchor="middle" font-size="15" fill="#202124">输入文本：“我 爱 吃”</text>
+  <line x1="270" y1="114" x2="360" y2="114" stroke="#5F6368" stroke-width="1.5" marker-end="url(#ar)"/>
+  <text x="315" y="106" text-anchor="middle" font-size="11" fill="#5F6368">分词</text>
+  <rect x="362" y="92" width="150" height="44" rx="8" fill="#F1F3F4" stroke="#DADCE0"/>
+  <text x="437" y="119" text-anchor="middle" font-size="15" fill="#202124">[1, 2, 3]</text>
+  <text x="530" y="112" font-size="12" fill="#5F6368">← n = 3 个整数（纯编号，还没有意义）</text>
+  <line x1="437" y1="136" x2="437" y2="196" stroke="#5F6368" stroke-width="1.5" marker-end="url(#ar)"/>
+
+  <!-- B. embedding -->
+  <text x="60" y="182" font-size="15" font-weight="bold" fill="#1A73E8">① 入口：查嵌入表，编号 → 坐标</text>
+
+  <!-- E table 10x4 -->
+  <text x="205" y="206" text-anchor="middle" font-size="11" fill="#5F6368">d = 4 列</text>
+  <!-- rows -->
+  <g font-size="11" fill="#5F6368" text-anchor="end">
+    <text x="158" y="226">0 &lt;EOS&gt;</text><text x="158" y="246">1 我</text><text x="158" y="266">2 爱</text>
+    <text x="158" y="286">3 吃</text><text x="158" y="306">4 苹果</text><text x="158" y="326">5 香蕉</text>
+    <text x="158" y="346">6 很</text><text x="158" y="366">7 甜</text><text x="158" y="386">8 的</text><text x="158" y="406">9 ，</text>
+  </g>
+  <g stroke="#FFFFFF" stroke-width="1">
+    <g fill="#F1F3F4">
+      <rect x="165" y="212" width="80" height="20"/><rect x="165" y="292" width="80" height="20"/>
+      <rect x="165" y="312" width="80" height="20"/><rect x="165" y="332" width="80" height="20"/>
+      <rect x="165" y="352" width="80" height="20"/><rect x="165" y="372" width="80" height="20"/><rect x="165" y="392" width="80" height="20"/>
+    </g>
+    <g fill="#A5D6A7">
+      <rect x="165" y="232" width="80" height="20"/><rect x="165" y="252" width="80" height="20"/><rect x="165" y="272" width="80" height="20"/>
+    </g>
+    <g fill="none" stroke="#FFFFFF">
+      <line x1="185" y1="212" x2="185" y2="412"/><line x1="205" y1="212" x2="205" y2="412"/><line x1="225" y1="212" x2="225" y2="412"/>
+    </g>
+  </g>
+  <text x="205" y="432" text-anchor="middle" font-size="12" fill="#5F6368">嵌入表 E：10×4 = 40 个参数</text>
+
+  <line x1="252" y1="262" x2="420" y2="262" stroke="#5F6368" stroke-width="1.5" marker-end="url(#ar)"/>
+  <text x="336" y="252" text-anchor="middle" font-size="11" fill="#5F6368">取出第 1、2、3 行</text>
+
+  <!-- X0 3x4 -->
+  <g font-size="12" fill="#202124" text-anchor="end">
+    <text x="424" y="248">我</text><text x="424" y="276">爱</text><text x="424" y="304">吃</text>
+  </g>
+  <g fill="#BBDEFB" stroke="#FFFFFF">
+    <rect x="430" y="230" width="28" height="28"/><rect x="458" y="230" width="28" height="28"/><rect x="486" y="230" width="28" height="28"/><rect x="514" y="230" width="28" height="28"/>
+    <rect x="430" y="258" width="28" height="28"/><rect x="458" y="258" width="28" height="28"/><rect x="486" y="258" width="28" height="28"/><rect x="514" y="258" width="28" height="28"/>
+    <rect x="430" y="286" width="28" height="28"/><rect x="458" y="286" width="28" height="28"/><rect x="486" y="286" width="28" height="28"/><rect x="514" y="286" width="28" height="28"/>
+  </g>
+  <g font-size="12" fill="#202124">
+    <text x="560" y="244">X⁰ = 3×4 矩阵</text>
+    <text x="560" y="264">每行 = 一个 token 的 4 维坐标</text>
+    <text x="560" y="284" fill="#5F6368">（已加位置信息：“我是第几个字”）</text>
+    <text x="560" y="308" fill="#5F6368">例：E[1] = [0.2, −1.1, 0.5, 0.9]</text>
+  </g>
+  <line x1="472" y1="320" x2="472" y2="452" stroke="#5F6368" stroke-width="1.5" marker-end="url(#ar)"/>
+
+  <!-- C. blocks -->
+  <text x="60" y="446" font-size="15" font-weight="bold" fill="#1A73E8">② 主体：L = 3 个同构块，形状恒为 3×4</text>
+
+  <rect x="60" y="458" width="760" height="332" rx="10" fill="#E8F0FE" stroke="#1A73E8"/>
+  <text x="80" y="484" font-size="14" font-weight="bold" fill="#1A73E8">块 1　（输入 3×4 → 输出 3×4）</text>
+
+  <!-- attention unit -->
+  <rect x="85" y="496" width="345" height="268" rx="8" fill="#FFFFFF" stroke="#90CAF9"/>
+  <text x="100" y="520" font-size="13" font-weight="bold" fill="#202124">注意力 —— 唯一让 token 交流的地方</text>
+  <g font-size="11" fill="#5F6368" text-anchor="middle">
+    <text x="175" y="552">看“我”</text><text x="225" y="552">看“爱”</text><text x="275" y="552">看“吃”</text>
+  </g>
+  <g font-size="12" fill="#202124" text-anchor="end">
+    <text x="144" y="590">我</text><text x="144" y="640">爱</text><text x="144" y="690">吃</text>
+  </g>
+  <g stroke="#FFFFFF">
+    <rect x="150" y="560" width="50" height="50" fill="#64B5F6"/>
+    <rect x="200" y="560" width="50" height="50" fill="#ECEFF1"/>
+    <rect x="250" y="560" width="50" height="50" fill="#ECEFF1"/>
+    <rect x="150" y="610" width="50" height="50" fill="#BBDEFB"/>
+    <rect x="200" y="610" width="50" height="50" fill="#64B5F6"/>
+    <rect x="250" y="610" width="50" height="50" fill="#ECEFF1"/>
+    <rect x="150" y="660" width="50" height="50" fill="#BBDEFB"/>
+    <rect x="200" y="660" width="50" height="50" fill="#BBDEFB"/>
+    <rect x="250" y="660" width="50" height="50" fill="#64B5F6"/>
+  </g>
+  <g font-size="13" fill="#B0BEC5" text-anchor="middle">
+    <text x="225" y="590">✗</text><text x="275" y="590">✗</text><text x="275" y="640">✗</text>
+  </g>
+  <g font-size="12" fill="#0D47A1" text-anchor="middle">
+    <text x="175" y="690">0.2</text><text x="225" y="690">0.3</text><text x="275" y="690">0.5</text>
+  </g>
+  <text x="150" y="732" font-size="11" fill="#5F6368">3×3 打分表：每行过 softmax → 加权求和</text>
+  <text x="150" y="750" font-size="11" fill="#EA4335">✗ = 因果掩码：不许看未来</text>
+
+  <!-- ffn unit -->
+  <rect x="450" y="496" width="350" height="268" rx="8" fill="#FFFFFF" stroke="#90CAF9"/>
+  <text x="465" y="520" font-size="13" font-weight="bold" fill="#202124">FFN —— 每行独立消化，互不交流</text>
+  <g fill="#BBDEFB" stroke="#FFFFFF">
+    <rect x="495" y="580" width="20" height="20"/><rect x="495" y="600" width="20" height="20"/>
+    <rect x="495" y="620" width="20" height="20"/><rect x="495" y="640" width="20" height="20"/>
+  </g>
+  <line x1="525" y1="620" x2="585" y2="620" stroke="#5F6368" stroke-width="1.5" marker-end="url(#ar)"/>
+  <rect x="590" y="545" width="30" height="150" rx="6" fill="#64B5F6"/>
+  <text x="605" y="712" text-anchor="middle" font-size="11" fill="#5F6368">16 维</text>
+  <line x1="630" y1="620" x2="690" y2="620" stroke="#5F6368" stroke-width="1.5" marker-end="url(#ar)"/>
+  <g fill="#BBDEFB" stroke="#FFFFFF">
+    <rect x="695" y="580" width="20" height="20"/><rect x="695" y="600" width="20" height="20"/>
+    <rect x="695" y="620" width="20" height="20"/><rect x="695" y="640" width="20" height="20"/>
+  </g>
+  <text x="505" y="712" text-anchor="middle" font-size="11" fill="#5F6368">4 维</text>
+  <text x="705" y="712" text-anchor="middle" font-size="11" fill="#5F6368">4 维</text>
+  <text x="465" y="740" font-size="11" fill="#5F6368">升维 ×4 → 非线性 → 压回；输出 = 输入 + 修正量（残差）</text>
+
+  <line x1="440" y1="790" x2="440" y2="806" stroke="#5F6368" stroke-width="1.5" marker-end="url(#ar)"/>
+  <rect x="60" y="810" width="760" height="42" rx="10" fill="#E8F0FE" stroke="#1A73E8"/>
+  <text x="440" y="836" text-anchor="middle" font-size="13" fill="#1A73E8">块 2 —— 结构相同，参数是另一套　（3×4 → 3×4）</text>
+  <line x1="440" y1="852" x2="440" y2="868" stroke="#5F6368" stroke-width="1.5" marker-end="url(#ar)"/>
+  <rect x="60" y="872" width="760" height="42" rx="10" fill="#E8F0FE" stroke="#1A73E8"/>
+  <text x="440" y="898" text-anchor="middle" font-size="13" fill="#1A73E8">块 3 —— 同上　（3×4 → 3×4）</text>
+  <line x1="440" y1="914" x2="440" y2="944" stroke="#5F6368" stroke-width="1.5" marker-end="url(#ar)"/>
+
+  <!-- D. output head -->
+  <text x="60" y="940" font-size="15" font-weight="bold" fill="#1A73E8">③ 出口：最后一行 → V 张选票</text>
+
+  <g font-size="12" fill="#202124" text-anchor="end">
+    <text x="94" y="978">我</text><text x="94" y="1006">爱</text><text x="94" y="1034">吃</text>
+  </g>
+  <g stroke="#FFFFFF">
+    <rect x="100" y="960" width="28" height="28" fill="#E3F2FD"/><rect x="128" y="960" width="28" height="28" fill="#E3F2FD"/><rect x="156" y="960" width="28" height="28" fill="#E3F2FD"/><rect x="184" y="960" width="28" height="28" fill="#E3F2FD"/>
+    <rect x="100" y="988" width="28" height="28" fill="#E3F2FD"/><rect x="128" y="988" width="28" height="28" fill="#E3F2FD"/><rect x="156" y="988" width="28" height="28" fill="#E3F2FD"/><rect x="184" y="988" width="28" height="28" fill="#E3F2FD"/>
+    <rect x="100" y="1016" width="28" height="28" fill="#FFE082"/><rect x="128" y="1016" width="28" height="28" fill="#FFE082"/><rect x="156" y="1016" width="28" height="28" fill="#FFE082"/><rect x="184" y="1016" width="28" height="28" fill="#FFE082"/>
+  </g>
+  <text x="100" y="1064" font-size="12" fill="#5F6368">X³ = 3×4：语境化完成，此刻的“吃”行</text>
+  <text x="100" y="1082" font-size="12" fill="#5F6368">≈ “‘我爱’之后的吃，正等一个食物”</text>
+
+  <line x1="216" y1="1030" x2="262" y2="1030" stroke="#5F6368" stroke-width="1.5" marker-end="url(#ar)"/>
+  <text x="239" y="1018" text-anchor="middle" font-size="10" fill="#5F6368">只取末行</text>
+  <g fill="#FFE082" stroke="#FFFFFF">
+    <rect x="266" y="1016" width="28" height="28"/><rect x="294" y="1016" width="28" height="28"/><rect x="322" y="1016" width="28" height="28"/><rect x="350" y="1016" width="28" height="28"/>
+  </g>
+  <text x="322" y="1060" text-anchor="middle" font-size="11" fill="#5F6368">1×4</text>
+  <line x1="382" y1="1030" x2="424" y2="1030" stroke="#5F6368" stroke-width="1.5" marker-end="url(#ar)"/>
+  <rect x="428" y="1002" width="120" height="56" rx="8" fill="#E8F0FE" stroke="#1A73E8"/>
+  <text x="488" y="1025" text-anchor="middle" font-size="12" fill="#1A73E8">输出矩阵 U</text>
+  <text x="488" y="1044" text-anchor="middle" font-size="12" fill="#1A73E8">4×10</text>
+  <line x1="548" y1="1030" x2="592" y2="1030" stroke="#5F6368" stroke-width="1.5" marker-end="url(#ar)"/>
+
+  <!-- logits bars -->
+  <text x="598" y="972" font-size="12" fill="#202124">10 个 logits（裸分，可正可负）</text>
+  <line x1="598" y1="1030" x2="798" y2="1030" stroke="#DADCE0"/>
+  <g fill="#90A4AE">
+    <rect x="600" y="1030" width="14" height="15"/>
+    <rect x="620" y="1026" width="14" height="4"/>
+    <rect x="640" y="1030" width="14" height="10"/>
+    <rect x="660" y="1029" width="14" height="1"/>
+    <rect x="680" y="993"  width="14" height="37"/>
+    <rect x="700" y="1004" width="14" height="26"/>
+    <rect x="720" y="1030" width="14" height="5"/>
+    <rect x="740" y="1024" width="14" height="6"/>
+    <rect x="760" y="1030" width="14" height="24"/>
+    <rect x="780" y="1028" width="14" height="2"/>
+  </g>
+  <text x="687" y="986" text-anchor="middle" font-size="10" fill="#5F6368">苹果 3.1</text>
+  <text x="707" y="1068" text-anchor="middle" font-size="10" fill="#5F6368">香蕉 2.2</text>
+
+  <line x1="698" y1="1078" x2="698" y2="1106" stroke="#5F6368" stroke-width="1.5" marker-end="url(#ar)"/>
+  <text x="712" y="1096" font-size="11" fill="#5F6368">÷T，softmax</text>
+
+  <!-- prob bars -->
+  <text x="598" y="1128" font-size="12" fill="#202124">10 个概率（全正，和 = 1）</text>
+  <g fill="#81C784">
+    <rect x="600" y="1207" width="14" height="1"/>
+    <rect x="620" y="1206" width="14" height="2"/>
+    <rect x="640" y="1207" width="14" height="1"/>
+    <rect x="660" y="1206" width="14" height="2"/>
+    <rect x="680" y="1135" width="14" height="73" fill="#1E8E3E"/>
+    <rect x="700" y="1179" width="14" height="29"/>
+    <rect x="720" y="1204" width="14" height="4"/>
+    <rect x="740" y="1202" width="14" height="6"/>
+    <rect x="760" y="1206" width="14" height="2"/>
+    <rect x="780" y="1204" width="14" height="4"/>
+  </g>
+  <line x1="598" y1="1208" x2="798" y2="1208" stroke="#DADCE0"/>
+  <text x="687" y="1131" text-anchor="middle" font-size="10" fill="#1E8E3E">0.61</text>
+  <text x="687" y="1222" text-anchor="middle" font-size="10" fill="#5F6368">苹果</text>
+  <text x="707" y="1236" text-anchor="middle" font-size="10" fill="#5F6368">香蕉 0.24</text>
+
+  <line x1="698" y1="1244" x2="698" y2="1270" stroke="#5F6368" stroke-width="1.5" marker-end="url(#ar)"/>
+  <text x="712" y="1262" font-size="11" fill="#5F6368">掷骰子采样</text>
+  <rect x="643" y="1274" width="110" height="44" rx="10" fill="#1E8E3E"/>
+  <text x="698" y="1302" text-anchor="middle" font-size="18" font-weight="bold" fill="#FFFFFF">苹果</text>
+
+  <!-- params note -->
+  <rect x="60" y="1340" width="760" height="106" rx="8" fill="#FFF8E1" stroke="#F9A825"/>
+  <text x="80" y="1366" font-size="13" font-weight="bold" fill="#202124">参数总账（这个玩具全模型只有 656 个数字）</text>
+  <text x="80" y="1390" font-size="12" fill="#5F6368">· 3 个块 × 192 = 576，恰好 = 12·L·d² = 12×3×4²　—— 上一节的公式在玩具上分毫不差</text>
+  <text x="80" y="1410" font-size="12" fill="#5F6368">· 两头矩阵：嵌入 10×4 = 40，输出 4×10 = 40（有的模型两者共享）</text>
+  <text x="80" y="1430" font-size="12" fill="#5F6368">· Llama-3-8B 就是同一张图，把数字换成 d=4096、L=32、V=128256 而已</text>
+</svg>
