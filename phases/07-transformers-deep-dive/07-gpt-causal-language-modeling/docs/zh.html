@@ -91,6 +91,17 @@
   .sw{display:inline-block;width:.85em;height:.85em;border-radius:2px;vertical-align:-.1em;margin-right:.4em;}
   .sw.dash{border:1px dashed var(--line);background:transparent;}
 
+  .pbars{display:flex;flex-direction:column;gap:.55rem;margin:1rem 0 .3rem;}
+  .prow{display:flex;align-items:center;gap:.7rem;}
+  .plab{font-family:var(--mono);font-size:11px;color:var(--muted);width:92px;flex:none;text-align:right;}
+  .pbar{display:flex;height:26px;flex:1;border-radius:3px;overflow:hidden;border:1px solid var(--line);}
+  .ps{display:flex;align-items:center;justify-content:center;font-size:11px;font-family:var(--mono);
+    white-space:nowrap;overflow:hidden;flex:none;}
+  .ps.a{background:var(--diag);color:var(--diag-ink);}
+  .ps.b{background:var(--cell);color:var(--cell-ink);}
+  .ps.c{background:var(--code-bg);color:var(--muted);}
+  .ps.r{background:transparent;color:var(--chip-old-ink);}
+
   figure.plate{margin:0;background:var(--plate);border:1px solid var(--line);border-radius:6px;
     padding:12px;overflow-x:auto;}
   figure.plate svg{display:block;width:100%;height:auto;min-width:620px;}
@@ -390,6 +401,25 @@
     <span class="arrow">→ 采样 →</span>
     <span class="tok out">苹果</span>
   </div>
+
+  <h3>温度与抽签：随机到底是从哪一步进来的</h3>
+  <p>先确认一个判断：<b>如果没有任何随机因素，最高分就是下一个词——对。</b>这叫贪心解码（greedy，等价于 T → 0）：每步直接取 logits 最大者，同一个 prompt 每次生成一字不差。API 里设 temperature = 0，要的就是这个行为。</p>
+  <p>但随机并不是温度本身产生的。<b>随机来自「按概率抽签」这个动作</b>：把 V 个概率排成一条 0 → 1 的线段，掷一个 0 ~ 1 之间的随机数 u，落进谁的区间就选谁。温度只负责改变各段的长度——softmax(z/T) 保序、只调悬殊——不负责掷骰子。T 调低，最大段膨胀；T 调高，各段趋于均匀；T → 0 的极限下「苹果」独占整条线，抽签退化成必中，所以贪心只是采样的特例。</p>
+  <p>用玩具的真实 logits 算一遍。「我爱吃」之后，出口给全词表的打分是：</p>
+  <pre><code>logits：苹果 3.1   香蕉 2.2   甜 0.5   我 0.3   ， 0.2   吃 0.1   很 −0.4   爱 −0.8   &lt;EOS&gt; −1.2   的 −2.0</code></pre>
+  <p>同一组分数，除以不同的 T 再过 softmax，签筒变成这样（段长 = 概率）：</p>
+  <div class="pbars">
+    <div class="prow"><span class="plab">T = 0 贪心</span>
+      <div class="pbar"><span class="ps a" style="width:100%">苹果 1.00 —— 不掷骰子，直接取最大</span></div></div>
+    <div class="prow"><span class="plab">T = 0.5</span>
+      <div class="pbar"><span class="ps a" style="width:84.6%">苹果 .846</span><span class="ps b" style="width:14%">香蕉 .140</span><span class="ps r" style="width:1.4%"></span></div></div>
+    <div class="prow"><span class="plab">T = 1</span>
+      <div class="pbar"><span class="ps a" style="width:58.3%">苹果 .583</span><span class="ps b" style="width:23.7%">香蕉 .237</span><span class="ps c" style="width:4.3%"></span><span class="ps r" style="width:13.7%">其余 7 个 .137</span></div></div>
+    <div class="prow"><span class="plab">T = 2</span>
+      <div class="pbar"><span class="ps a" style="width:32%">苹果 .320</span><span class="ps b" style="width:20.4%">香蕉 .204</span><span class="ps c" style="width:8.7%">甜 .087</span><span class="ps r" style="width:38.9%">其余 6 个 .389</span></div></div>
+  </div>
+  <p class="small muted">读法：掷同一个随机数 u = 0.70——T = 0.5 时落在「苹果」段内（0 ~ 0.846）；T = 1 时落在「香蕉」段（0.583 ~ 0.820）；T = 2 时越过苹果、香蕉、甜（累计 0.611）和我（0.690），落进「，」的地盘——<b>同一个骰子，温度不同，地价不同，命运不同</b>。这就是「加了 temperature 就变随机」的准确含义：骰子一直都在，温度决定它有多大杀伤力。</p>
+  <p class="small muted">工程注脚：贪心确定但容易复读、僵硬，创意任务常配 T ≈ 0.7 ~ 1.0，数学与代码常用 T = 0；实践中还会配 top-p / top-k 先把长尾截掉再抽签，防止高温下抽中「的」这类明显不通的尾巴。</p>
 
   <h2>3 · 核心问题：预测第 2 个 token 和第 1 个有什么不同</h2>
   <p>概念上：没有任何不同。模型是无状态的——它没有「记忆」这个器官，衔接方式简单粗暴：把刚生成的 token 粘回输入末尾，整条流水线重跑一遍。这就是「自回归」（autoregressive）的字面意思：<b>自己回头喂自己</b>。</p>
