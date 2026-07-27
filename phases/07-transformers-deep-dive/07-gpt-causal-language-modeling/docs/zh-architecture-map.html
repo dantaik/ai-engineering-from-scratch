@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>GPT 架构全景图：参数与激活双色标注</title>
+<style>
+  :root{
+    --bg:#FFFFFF; --ink:#1A1A1A; --muted:#6E6E6E; --line:#E3E3E3; --rule:#2E2E2E;
+    --code-bg:#F6F6F6; --plate:#FFFFFF;
+    --sans:"PingFang SC","Microsoft YaHei","Noto Sans CJK SC",-apple-system,"Segoe UI",sans-serif;
+    --mono:"SF Mono",ui-monospace,Consolas,"JetBrains Mono",Menlo,monospace;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{ --bg:#131313; --ink:#DCDCDC; --muted:#909090; --line:#2C2C2C; --rule:#C9C9C9;
+      --code-bg:#1C1C1C; --plate:#FFFFFF; }
+  }
+  :root[data-theme="dark"]{ --bg:#131313; --ink:#DCDCDC; --muted:#909090; --line:#2C2C2C; --rule:#C9C9C9;
+    --code-bg:#1C1C1C; --plate:#FFFFFF; }
+  :root[data-theme="light"]{ --bg:#FFFFFF; --ink:#1A1A1A; --muted:#6E6E6E; --line:#E3E3E3; --rule:#2E2E2E;
+    --code-bg:#F6F6F6; --plate:#FFFFFF; }
+
+  body{background:var(--bg);color:var(--ink);font-family:var(--sans);
+    font-size:14px;line-height:1.85;margin:0;padding:0 20px 80px;-webkit-font-smoothing:antialiased;}
+  .col{max-width:680px;margin:0 auto;}
+  .wide{max-width:880px;margin:1.8rem auto;}
+  header.hd{max-width:680px;margin:52px auto 0;padding-bottom:1.2rem;border-bottom:1px solid var(--rule);}
+  .kicker{font-family:var(--mono);font-size:11px;letter-spacing:.08em;color:var(--muted);}
+  h1{font-size:20px;font-weight:700;margin:.5rem 0 .6rem;letter-spacing:.01em;}
+  .specline{font-family:var(--mono);font-size:12px;color:var(--muted);}
+  .thesis{margin:1.2rem 0 0;padding:2px 0 2px 16px;border-left:2px solid var(--rule);}
+  .thesis p{margin:0;font-size:13.5px;}
+  h2{font-family:var(--mono);font-size:14px;font-weight:700;letter-spacing:.02em;
+    border-top:1px solid var(--line);padding-top:1.8rem;margin:3rem 0 1rem;}
+  p{margin:.8rem 0;}
+  .muted{color:var(--muted);}
+  .small{font-size:12.5px;}
+  pre{background:var(--code-bg);border:1px solid var(--line);border-radius:4px;
+    padding:12px 16px;overflow-x:auto;font-family:var(--mono);font-size:12px;line-height:1.75;margin:1rem 0;}
+  pre code{background:none;padding:0;}
+  code{font-family:var(--mono);font-size:.92em;background:var(--code-bg);border-radius:3px;padding:.06em .35em;}
+  .panel{border-left:2px solid var(--rule);padding:2px 0 2px 16px;margin:1.3rem 0;}
+  .panel p{margin:.45rem 0;font-size:13.5px;}
+  .panel .pt{font-family:var(--mono);font-size:12px;font-weight:700;margin:0 0 .35rem;}
+  figure.plate{margin:0;background:var(--plate);border:1px solid var(--line);border-radius:6px;
+    padding:12px;overflow-x:auto;}
+  figure.plate svg{display:block;width:100%;height:auto;min-width:640px;}
+  figcaption{font-family:var(--mono);font-size:11.5px;color:var(--muted);margin-top:.6rem;text-align:center;}
+  footer{max-width:680px;margin:3.2rem auto 0;font-size:12px;color:var(--muted);
+    border-top:1px solid var(--line);padding-top:1.2rem;}
+  a{color:var(--ink);}
+  a:focus-visible{outline:2px solid var(--rule);outline-offset:2px;}
+</style>
+</head>
+<body>
+
+
+<header class="hd">
+  <div class="kicker">PHASE 7 · GPT — CAUSAL LANGUAGE MODELING · 附录 · 中文笔记</div>
+  <h1>GPT 架构全景图：参数与激活双色标注</h1>
+  <div class="specline">decoder-only　尺寸沿用玩具（n = 3，d = 4，V = 10，单头）　深色块 = 参数　白色块 = 激活</div>
+  <div class="thesis">
+    <p>一张图放大到矩阵级：<b>深色块是训练学来的参数</b>（躺在权重文件里，对所有输入相同——E、每层的 W_Q/W_K/W_V/W_O 与 FFN 升降维、末端的 U），<b>白色块是运行时现算的激活</b>（随输入变、用完即弃——X、Q/K/V、打分表、logits、概率）。右侧竖排是形状审计轨：任何一步形状接不上，就是理解或代码出了错的地方。</p>
+  </div>
+</header>
+
+<div class="wide">
+  <figure class="plate">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 880 1980" font-family="'PingFang SC','Microsoft YaHei','Noto Sans CJK SC',sans-serif">
+  <defs>
+    <marker id="am" markerWidth="10" markerHeight="8" refX="8" refY="3" orient="auto">
+      <path d="M0,0 L8,3 L0,6 z" fill="#5F6368"/>
+    </marker>
+    <marker id="amD" markerWidth="10" markerHeight="8" refX="8" refY="3" orient="auto">
+      <path d="M0,0 L8,3 L0,6 z" fill="#5C5C5C"/>
+    </marker>
+  </defs>
+  <rect x="0" y="0" width="880" height="1980" fill="#FFFFFF"/>
+
+  <text x="420" y="40" text-anchor="middle" font-size="21" font-weight="bold" fill="#202124">GPT（decoder-only）全景：一次前向的每一个矩阵</text>
+  <text x="420" y="64" text-anchor="middle" font-size="13" fill="#5F6368">对应五步描述的修订版　尺寸取玩具值 n=3 · d=4 · V=10 · 单头（真模型只是换数字）</text>
+
+  <!-- legend -->
+  <rect x="150" y="84" width="20" height="16" rx="3" fill="#4A4A4A"/>
+  <text x="178" y="97" font-size="12" fill="#202124">参数：训练学来，写死在权重文件，所有输入共用</text>
+  <rect x="480" y="84" width="20" height="16" rx="3" fill="#FFFFFF" stroke="#7A7A7A"/>
+  <text x="508" y="97" font-size="12" fill="#202124">激活：运行时现算，随输入变，用完即弃</text>
+
+  <!-- shape rail -->
+  <line x1="806" y1="140" x2="806" y2="1850" stroke="#DADCE0" stroke-width="1"/>
+  <text x="852" y="132" text-anchor="middle" font-size="11" font-weight="bold" fill="#5F6368">形状审计轨</text>
+
+  <!-- ① tokenize -->
+  <text x="60" y="152" font-size="14" font-weight="bold" fill="#3A3A3A">① 分词：文字 → 整数编号</text>
+  <rect x="120" y="166" width="180" height="42" rx="8" fill="#FFFFFF" stroke="#7A7A7A"/>
+  <text x="210" y="192" text-anchor="middle" font-size="14" fill="#202124">prompt「我 爱 吃」</text>
+  <line x1="300" y1="187" x2="386" y2="187" stroke="#5F6368" stroke-width="1.5" marker-end="url(#am)"/>
+  <text x="343" y="179" text-anchor="middle" font-size="11" fill="#5F6368">分词器</text>
+  <rect x="390" y="166" width="130" height="42" rx="8" fill="#FFFFFF" stroke="#7A7A7A"/>
+  <text x="455" y="192" text-anchor="middle" font-size="14" fill="#202124">[1, 2, 3]</text>
+  <circle cx="806" cy="187" r="3" fill="#5F6368"/>
+  <text x="852" y="191" text-anchor="middle" font-size="11" fill="#5F6368">n 个整数</text>
+  <line x1="455" y1="208" x2="455" y2="252" stroke="#5F6368" stroke-width="1.5" marker-end="url(#am)"/>
+
+  <!-- ② embedding -->
+  <text x="60" y="248" font-size="14" font-weight="bold" fill="#3A3A3A">② 入口：查嵌入表（＋位置信息）</text>
+  <rect x="120" y="262" width="170" height="56" rx="8" fill="#4A4A4A"/>
+  <text x="205" y="286" text-anchor="middle" font-size="13" fill="#FFFFFF">嵌入表 E</text>
+  <text x="205" y="305" text-anchor="middle" font-size="11" fill="#D0D0D0">V×d = 10×4</text>
+  <line x1="290" y1="290" x2="384" y2="290" stroke="#5F6368" stroke-width="1.5" marker-end="url(#am)"/>
+  <text x="337" y="281" text-anchor="middle" font-size="11" fill="#5F6368">取第 1/2/3 行</text>
+  <rect x="388" y="262" width="134" height="56" rx="8" fill="#FFFFFF" stroke="#7A7A7A"/>
+  <text x="455" y="286" text-anchor="middle" font-size="13" fill="#202124">X⁰</text>
+  <text x="455" y="305" text-anchor="middle" font-size="11" fill="#5F6368">n×d = 3×4</text>
+  <circle cx="806" cy="290" r="3" fill="#5F6368"/>
+  <text x="852" y="294" text-anchor="middle" font-size="11" fill="#5F6368">n×d</text>
+  <text x="540" y="282" font-size="11" fill="#5F6368">← 查表不是乘法；X 是激活，</text>
+  <text x="540" y="299" font-size="11" fill="#5F6368">　 E 是参数——从这里开始双色</text>
+  <line x1="455" y1="318" x2="455" y2="362" stroke="#5F6368" stroke-width="1.5" marker-end="url(#am)"/>
+
+  <!-- ③ block -->
+  <text x="60" y="358" font-size="14" font-weight="bold" fill="#3A3A3A">③ 块 1 ＝ 注意力单元 ＋ FFN 单元（每层自己的一组参数）</text>
+  <rect x="56" y="372" width="716" height="1010" rx="10" fill="#F7F7F7" stroke="#3A3A3A"/>
+
+  <!-- attention unit -->
+  <rect x="76" y="392" width="676" height="606" rx="8" fill="#FFFFFF" stroke="#C4C4C4"/>
+  <text x="96" y="418" font-size="13" font-weight="bold" fill="#202124">注意力单元 —— 跨行搬运（唯一让 token 交流的地方）</text>
+
+  <!-- X in -->
+  <rect x="388" y="432" width="134" height="40" rx="8" fill="#FFFFFF" stroke="#7A7A7A"/>
+  <text x="455" y="457" text-anchor="middle" font-size="12" fill="#202124">X⁰　3×4</text>
+
+  <!-- three W boxes -->
+  <line x1="420" y1="472" x2="205" y2="504" stroke="#5F6368" stroke-width="1.2" marker-end="url(#am)"/>
+  <line x1="455" y1="472" x2="455" y2="504" stroke="#5F6368" stroke-width="1.2" marker-end="url(#am)"/>
+  <line x1="490" y1="472" x2="700" y2="504" stroke="#5F6368" stroke-width="1.2" marker-end="url(#am)"/>
+  <rect x="140" y="508" width="130" height="50" rx="8" fill="#4A4A4A"/>
+  <text x="205" y="529" text-anchor="middle" font-size="12" fill="#FFFFFF">W_Q　4×4</text>
+  <text x="205" y="547" text-anchor="middle" font-size="10" fill="#D0D0D0">我在找什么</text>
+  <rect x="390" y="508" width="130" height="50" rx="8" fill="#4A4A4A"/>
+  <text x="455" y="529" text-anchor="middle" font-size="12" fill="#FFFFFF">W_K　4×4</text>
+  <text x="455" y="547" text-anchor="middle" font-size="10" fill="#D0D0D0">我以什么被找</text>
+  <rect x="640" y="508" width="112" height="50" rx="8" fill="#4A4A4A"/>
+  <text x="696" y="529" text-anchor="middle" font-size="12" fill="#FFFFFF">W_V　4×4</text>
+  <text x="696" y="547" text-anchor="middle" font-size="10" fill="#D0D0D0">我交什么货</text>
+
+  <line x1="205" y1="558" x2="205" y2="586" stroke="#5F6368" stroke-width="1.2" marker-end="url(#am)"/>
+  <line x1="455" y1="558" x2="455" y2="586" stroke="#5F6368" stroke-width="1.2" marker-end="url(#am)"/>
+  <line x1="696" y1="558" x2="696" y2="586" stroke="#5F6368" stroke-width="1.2" marker-end="url(#am)"/>
+
+  <rect x="150" y="590" width="110" height="40" rx="8" fill="#FFFFFF" stroke="#7A7A7A"/>
+  <text x="205" y="615" text-anchor="middle" font-size="12" fill="#202124">Q　3×4</text>
+  <rect x="400" y="590" width="110" height="40" rx="8" fill="#FFFFFF" stroke="#7A7A7A"/>
+  <text x="455" y="615" text-anchor="middle" font-size="12" fill="#202124">K　3×4</text>
+  <rect x="641" y="590" width="110" height="40" rx="8" fill="#FFFFFF" stroke="#7A7A7A"/>
+  <text x="696" y="615" text-anchor="middle" font-size="12" fill="#202124">V　3×4</text>
+  <text x="96" y="662" font-size="11" fill="#5C5C5C">三条箭头平行出发：Q ≠ X（隔一次乘法）；K 不来自 Q——三兄弟同父 X，不同妈 W</text>
+
+  <!-- scores -->
+  <line x1="230" y1="630" x2="320" y2="694" stroke="#5F6368" stroke-width="1.2" marker-end="url(#am)"/>
+  <line x1="440" y1="630" x2="360" y2="694" stroke="#5F6368" stroke-width="1.2" marker-end="url(#am)"/>
+  <rect x="240" y="698" width="200" height="46" rx="8" fill="#FFFFFF" stroke="#7A7A7A"/>
+  <text x="340" y="718" text-anchor="middle" font-size="12" fill="#202124">打分表 QKᵀ ÷ √d_k</text>
+  <text x="340" y="736" text-anchor="middle" font-size="11" fill="#5F6368">n×n = 3×3　÷√d_k 是写死的温度</text>
+  <line x1="340" y1="744" x2="340" y2="772" stroke="#5F6368" stroke-width="1.2" marker-end="url(#am)"/>
+  <text x="352" y="766" font-size="11" fill="#5F6368">上三角 ＋(−∞) 因果掩码 → 逐行 softmax</text>
+  <rect x="240" y="776" width="200" height="46" rx="8" fill="#FFFFFF" stroke="#7A7A7A"/>
+  <text x="340" y="796" text-anchor="middle" font-size="12" fill="#202124">权重表 A（每行和 = 1）</text>
+  <text x="340" y="814" text-anchor="middle" font-size="11" fill="#5F6368">3×3　这就是「注意力」本体，句句不同</text>
+
+  <!-- weighted sum -->
+  <line x1="440" y1="799" x2="560" y2="799" stroke="#5F6368" stroke-width="1.2" marker-end="url(#am)"/>
+  <path d="M 696 630 C 696 720, 640 760, 600 792" fill="none" stroke="#5F6368" stroke-width="1.2" marker-end="url(#am)"/>
+  <rect x="566" y="776" width="150" height="46" rx="8" fill="#FFFFFF" stroke="#7A7A7A"/>
+  <text x="641" y="796" text-anchor="middle" font-size="12" fill="#202124">A × V 加权平均</text>
+  <text x="641" y="814" text-anchor="middle" font-size="11" fill="#5F6368">3×4</text>
+
+  <line x1="641" y1="822" x2="641" y2="850" stroke="#5F6368" stroke-width="1.2" marker-end="url(#am)"/>
+  <rect x="576" y="854" width="130" height="50" rx="8" fill="#4A4A4A"/>
+  <text x="641" y="875" text-anchor="middle" font-size="12" fill="#FFFFFF">W_O　4×4</text>
+  <text x="641" y="893" text-anchor="middle" font-size="10" fill="#D0D0D0">多头时的搅拌与对账</text>
+
+  <line x1="576" y1="879" x2="490" y2="936" stroke="#5F6368" stroke-width="1.2" marker-end="url(#am)"/>
+  <circle cx="455" cy="950" r="16" fill="#FFFFFF" stroke="#3A3A3A" stroke-width="1.5"/>
+  <text x="455" y="956" text-anchor="middle" font-size="15" fill="#202124">＋</text>
+  <path d="M 388 452 C 120 452, 110 900, 439 950" fill="none" stroke="#5C5C5C" stroke-width="1.6" stroke-dasharray="6,4" marker-end="url(#amD)"/>
+  <text x="112" y="920" font-size="11" fill="#5C5C5C">残差：黑板上加一笔，不重写</text>
+  <text x="480" y="978" font-size="11" fill="#5F6368">＝ X⁰ ＋ 搬运修正　（3×4）</text>
+
+  <!-- ffn unit -->
+  <rect x="76" y="1018" width="676" height="270" rx="8" fill="#FFFFFF" stroke="#C4C4C4"/>
+  <text x="96" y="1044" font-size="13" font-weight="bold" fill="#202124">FFN 单元 —— 逐行加工（每行独立过，互不交流；键值记忆住在这里）</text>
+  <rect x="120" y="1076" width="120" height="40" rx="8" fill="#FFFFFF" stroke="#7A7A7A"/>
+  <text x="180" y="1101" text-anchor="middle" font-size="12" fill="#202124">每行 1×4</text>
+  <line x1="240" y1="1096" x2="286" y2="1096" stroke="#5F6368" stroke-width="1.2" marker-end="url(#am)"/>
+  <rect x="290" y="1071" width="120" height="50" rx="8" fill="#4A4A4A"/>
+  <text x="350" y="1092" text-anchor="middle" font-size="12" fill="#FFFFFF">升维 4→16</text>
+  <text x="350" y="1110" text-anchor="middle" font-size="10" fill="#D0D0D0">模式探测的键</text>
+  <line x1="410" y1="1096" x2="456" y2="1096" stroke="#5F6368" stroke-width="1.2" marker-end="url(#am)"/>
+  <text x="433" y="1088" text-anchor="middle" font-size="11" fill="#5F6368">非线性</text>
+  <rect x="460" y="1071" width="120" height="50" rx="8" fill="#4A4A4A"/>
+  <text x="520" y="1092" text-anchor="middle" font-size="12" fill="#FFFFFF">降维 16→4</text>
+  <text x="520" y="1110" text-anchor="middle" font-size="10" fill="#D0D0D0">要写入的值</text>
+  <line x1="580" y1="1096" x2="626" y2="1096" stroke="#5F6368" stroke-width="1.2" marker-end="url(#am)"/>
+  <rect x="630" y="1076" width="100" height="40" rx="8" fill="#FFFFFF" stroke="#7A7A7A"/>
+  <text x="680" y="1101" text-anchor="middle" font-size="12" fill="#202124">修正 1×4</text>
+  <path d="M 680 1116 C 680 1180, 520 1200, 471 1216" fill="none" stroke="#5F6368" stroke-width="1.2" marker-end="url(#am)"/>
+  <circle cx="455" cy="1222" r="16" fill="#FFFFFF" stroke="#3A3A3A" stroke-width="1.5"/>
+  <text x="455" y="1228" text-anchor="middle" font-size="15" fill="#202124">＋</text>
+  <path d="M 180 1116 C 180 1200, 380 1214, 439 1222" fill="none" stroke="#5C5C5C" stroke-width="1.6" stroke-dasharray="6,4" marker-end="url(#amD)"/>
+  <text x="200" y="1198" font-size="11" fill="#5C5C5C">残差再加一笔</text>
+  <text x="490" y="1250" font-size="12" fill="#202124">→ 块 1 输出 X¹　（3×4，形状与进来时一样）</text>
+  <text x="96" y="1276" font-size="11" fill="#5F6368">注：每个单元之前还有一步归一化（LayerNorm / RMSNorm），不改形状、参数只占零头，图中省略。</text>
+
+  <circle cx="806" cy="1222" r="3" fill="#5F6368"/>
+  <text x="852" y="1226" text-anchor="middle" font-size="11" fill="#5F6368">n×d</text>
+
+  <!-- collapsed blocks -->
+  <line x1="455" y1="1382" x2="455" y2="1410" stroke="#5F6368" stroke-width="1.5" marker-end="url(#am)"/>
+  <rect x="56" y="1414" width="716" height="44" rx="10" fill="#F7F7F7" stroke="#3A3A3A"/>
+  <text x="414" y="1441" text-anchor="middle" font-size="13" fill="#3A3A3A">块 2 —— 结构一模一样，参数是另一套（低层偏语法与局部）</text>
+  <line x1="455" y1="1458" x2="455" y2="1482" stroke="#5F6368" stroke-width="1.5" marker-end="url(#am)"/>
+  <rect x="56" y="1486" width="716" height="44" rx="10" fill="#F7F7F7" stroke="#3A3A3A"/>
+  <text x="414" y="1513" text-anchor="middle" font-size="13" fill="#3A3A3A">块 3 ⋯ 块 L —— 每层各一组参数（中层聚语境注知识，高层对齐输出）</text>
+  <circle cx="806" cy="1508" r="3" fill="#5F6368"/>
+  <text x="852" y="1512" text-anchor="middle" font-size="11" fill="#5F6368">n×d ×L 次</text>
+
+  <!-- ④⑤ output -->
+  <line x1="455" y1="1530" x2="455" y2="1560" stroke="#5F6368" stroke-width="1.5" marker-end="url(#am)"/>
+  <text x="60" y="1556" font-size="14" font-weight="bold" fill="#3A3A3A">④ 出口：末行 → U → V 张选票</text>
+  <rect x="388" y="1564" width="134" height="40" rx="8" fill="#FFFFFF" stroke="#7A7A7A"/>
+  <text x="455" y="1589" text-anchor="middle" font-size="12" fill="#202124">Y = X^L　3×4</text>
+  <line x1="455" y1="1604" x2="455" y2="1632" stroke="#5F6368" stroke-width="1.2" marker-end="url(#am)"/>
+  <text x="468" y="1626" font-size="11" fill="#5F6368">只取最后一行（预测下一个 token 只需要它）</text>
+  <rect x="400" y="1636" width="110" height="38" rx="8" fill="#FFFFFF" stroke="#7A7A7A"/>
+  <text x="455" y="1660" text-anchor="middle" font-size="12" fill="#202124">末行　1×4</text>
+  <circle cx="806" cy="1655" r="3" fill="#5F6368"/>
+  <text x="852" y="1659" text-anchor="middle" font-size="11" fill="#5F6368">1×d</text>
+  <line x1="510" y1="1655" x2="556" y2="1655" stroke="#5F6368" stroke-width="1.2" marker-end="url(#am)"/>
+  <rect x="560" y="1630" width="130" height="50" rx="8" fill="#4A4A4A"/>
+  <text x="625" y="1651" text-anchor="middle" font-size="12" fill="#FFFFFF">输出矩阵 U</text>
+  <text x="625" y="1669" text-anchor="middle" font-size="10" fill="#D0D0D0">d×V = 4×10　tied 时 ≡ Eᵀ</text>
+  <path d="M 625 1680 C 625 1720, 520 1732, 476 1740" fill="none" stroke="#5F6368" stroke-width="1.2" marker-end="url(#am)"/>
+  <rect x="330" y="1728" width="140" height="38" rx="8" fill="#FFFFFF" stroke="#7A7A7A"/>
+  <text x="400" y="1752" text-anchor="middle" font-size="12" fill="#202124">10 个 logits</text>
+  <circle cx="806" cy="1747" r="3" fill="#5F6368"/>
+  <text x="852" y="1751" text-anchor="middle" font-size="11" fill="#5F6368">1×V ←断在这就缺 U</text>
+  <line x1="400" y1="1766" x2="400" y2="1794" stroke="#5F6368" stroke-width="1.2" marker-end="url(#am)"/>
+  <text x="412" y="1788" font-size="11" fill="#5F6368">÷T → softmax（和 = 1）</text>
+  <rect x="310" y="1798" width="180" height="38" rx="8" fill="#FFFFFF" stroke="#7A7A7A"/>
+  <text x="400" y="1822" text-anchor="middle" font-size="12" fill="#202124">苹果 0.61 · 香蕉 0.24 · …</text>
+  <line x1="400" y1="1836" x2="400" y2="1864" stroke="#5F6368" stroke-width="1.2" marker-end="url(#am)"/>
+  <text x="412" y="1858" font-size="11" fill="#5F6368">T=0 恒取最大；T&gt;0 按概率抽签</text>
+  <rect x="345" y="1868" width="110" height="44" rx="10" fill="#1A1A1A"/>
+  <text x="400" y="1896" text-anchor="middle" font-size="17" font-weight="bold" fill="#FFFFFF">苹果</text>
+  <circle cx="806" cy="1890" r="3" fill="#5F6368"/>
+  <text x="852" y="1894" text-anchor="middle" font-size="11" fill="#5F6368">1 个词</text>
+
+  <!-- autoregressive loop -->
+  <path d="M 455 1890 C 660 1890, 700 300, 528 195" fill="none" stroke="#5C5C5C" stroke-width="1.8" stroke-dasharray="6,4" marker-end="url(#amD)"/>
+  <text x="660" y="1030" font-size="11" fill="#5C5C5C" transform="rotate(-90 672 1030)">粘回队尾，整条流水线重跑（KV cache 见走查图 2）</text>
+</svg>
+    <figcaption>图 · GPT 全景（矩阵级）：深色 = 参数（E、每层 W_Q/W_K/W_V/W_O 与 FFN 升降维、U），白色 = 激活；右侧为形状审计轨</figcaption>
+  </figure>
+</div>
+
+<div class="col">
+  <h2>对照文字版：修订后的五步</h2>
+  <pre><code>1. prompt → 分词器 → n 个整数 id
+2. 查嵌入表 E 取行拼成 X⁰（n×d，加位置信息）
+3. 每个 transformer 块（= 注意力 + FFN 两个单元）：
+     注意力：Q = X·W_Q，K = X·W_K，V = X·W_V（本层自己的 W）
+             → 打分 ÷√d_k → 掩码 → softmax → 加权平均 → W_O → 残差加回
+     FFN  ：每行独立 升维 → 非线性 → 压回 → 残差加回
+   输出形状不变，仍 n×d
+4. 重复 L 层（每层一组参数，分工自己长出来）→ Y = X^L（n×d）
+5. 取末行（1×d）→ ×U（d×V）→ V 个 logits → ÷T → softmax → V 个概率
+   → T = 0 恒取最大；T &gt; 0 按概率抽签 → 新词粘回队尾，回到第 3 步</code></pre>
+
+  <div class="panel">
+    <p class="pt">这张图怎么用</p>
+    <p>盯住两件事。<b>一是双色</b>：全图深色块合计就是权重文件的全部内容（玩具 656 个数字、Llama-3-8B 的 8.03B），白色块在每次前向里生灭一轮——分不清"学来的还是算出来的"时，回来看颜色。<b>二是右侧形状轨</b>：n 个整数 → n×d →（×L 不变）→ 1×d → 1×V → 1 个词；理解或代码哪里断了，形状轨会先于直觉告诉你断在哪。</p>
+  </div>
+
+  <p class="small muted">同系列：<a href="./zh.html">玩具 GPT 全流程走查</a>（图 1 管线俯瞰 / 图 2 自回归与 KV cache）　·　<a href="../../02-self-attention-from-scratch/docs/zh.html">注意力机制单独拆解</a>（本图注意力单元的逐格放大）　·　<a href="./zh-softmax-temperature.html">softmax 与 temperature</a>（本图最后三格的逐格放大）。经典的 2017 原论文 Figure 1 画的是编码器-解码器双塔——GPT 只是它的右半塔砍掉 cross-attention，初学先看本图再看那张，能少绕一段路。</p>
+</div>
+
+<footer>
+  <p>本页是 phases/07-transformers-deep-dive/07-gpt-causal-language-modeling 的附录：把玩具走查图 1 放大到矩阵级，标注参数/激活之分与形状审计轨。尺寸沿用玩具（n=3，d=4，V=10，单头）；真实模型同图换数字（Llama-3-8B：d=4096，L=32，V=128256，32 头 GQA）。</p>
+</footer>
+
+</body>
+</html>
