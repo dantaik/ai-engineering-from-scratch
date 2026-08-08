@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Scaling Laws：把「大力出奇迹」写成公式</title>
+<style>
+  :root{
+    --bg:#FFFFFF; --ink:#1A1A1A; --muted:#6E6E6E; --line:#E3E3E3; --rule:#2E2E2E;
+    --code-bg:#F6F6F6; --cell:#E8E8E8; --cell-ink:#2A2A2A; --diag:#ADADAD; --diag-ink:#111111;
+    --chip-old-ink:#9A9A9A; --out-bg:#1A1A1A; --out-ink:#FFFFFF;
+    --sans:"PingFang SC","Microsoft YaHei","Noto Sans CJK SC",-apple-system,"Segoe UI",sans-serif;
+    --mono:"SF Mono",ui-monospace,Consolas,"JetBrains Mono",Menlo,monospace;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --bg:#131313; --ink:#DCDCDC; --muted:#909090; --line:#2C2C2C; --rule:#C9C9C9;
+      --code-bg:#1C1C1C; --cell:#2E2E2E; --cell-ink:#D6D6D6; --diag:#606060; --diag-ink:#F2F2F2;
+      --chip-old-ink:#787878; --out-bg:#E4E4E4; --out-ink:#141414;
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#131313; --ink:#DCDCDC; --muted:#909090; --line:#2C2C2C; --rule:#C9C9C9;
+    --code-bg:#1C1C1C; --cell:#2E2E2E; --cell-ink:#D6D6D6; --diag:#606060; --diag-ink:#F2F2F2;
+    --chip-old-ink:#787878; --out-bg:#E4E4E4; --out-ink:#141414;
+  }
+  :root[data-theme="light"]{
+    --bg:#FFFFFF; --ink:#1A1A1A; --muted:#6E6E6E; --line:#E3E3E3; --rule:#2E2E2E;
+    --code-bg:#F6F6F6; --cell:#E8E8E8; --cell-ink:#2A2A2A; --diag:#ADADAD; --diag-ink:#111111;
+    --chip-old-ink:#9A9A9A; --out-bg:#1A1A1A; --out-ink:#FFFFFF;
+  }
+  body{background:var(--bg);color:var(--ink);font-family:var(--sans);
+    font-size:14px;line-height:1.85;margin:0;padding:0 20px 80px;-webkit-font-smoothing:antialiased;}
+  .col{max-width:680px;margin:0 auto;}
+  header.hd{max-width:680px;margin:52px auto 0;padding-bottom:1.2rem;border-bottom:1px solid var(--rule);}
+  .kicker{font-family:var(--mono);font-size:11px;letter-spacing:.08em;color:var(--muted);}
+  h1{font-size:20px;font-weight:700;margin:.5rem 0 .6rem;letter-spacing:.01em;}
+  .specline{font-family:var(--mono);font-size:12px;color:var(--muted);}
+  .thesis{margin:1.2rem 0 0;padding:2px 0 2px 16px;border-left:2px solid var(--rule);}
+  .thesis p{margin:0;font-size:13.5px;}
+  h2{font-family:var(--mono);font-size:14px;font-weight:700;letter-spacing:.02em;
+    border-top:1px solid var(--line);padding-top:1.8rem;margin:3rem 0 1rem;}
+  p{margin:.8rem 0;}
+  .muted{color:var(--muted);}
+  .small{font-size:12.5px;}
+  pre{background:var(--code-bg);border:1px solid var(--line);border-radius:4px;
+    padding:12px 16px;overflow-x:auto;font-family:var(--mono);font-size:12px;line-height:1.75;margin:1rem 0;}
+  code{font-family:var(--mono);font-size:.92em;background:var(--code-bg);border-radius:3px;padding:.06em .35em;}
+  pre code{background:none;padding:0;}
+  .panel{border-left:2px solid var(--rule);padding:2px 0 2px 16px;margin:1.3rem 0;}
+  .panel p{margin:.45rem 0;font-size:13.5px;}
+  .panel .pt{font-family:var(--mono);font-size:12px;font-weight:700;margin:0 0 .35rem;}
+  table.vt{border-collapse:collapse;width:100%;margin:.9rem 0;font-size:13px;font-variant-numeric:tabular-nums;}
+  table.vt th{text-align:right;font-family:var(--mono);font-size:11px;letter-spacing:.05em;color:var(--muted);
+    border-bottom:1px solid var(--rule);padding:.4em .7em;font-weight:400;}
+  table.vt th:first-child, table.vt td:first-child{text-align:left;}
+  table.vt td{border-bottom:1px solid var(--line);padding:.5em .7em;text-align:right;font-family:var(--mono);font-size:12.5px;}
+  table.vt tr.hl td{background:var(--code-bg);font-weight:700;}
+  .tblwrap{overflow-x:auto;}
+  figure.chart{margin:1.4rem 0 1.1rem;padding:0;}
+  figure.chart .frame{border:1px solid var(--line);border-radius:4px;padding:10px 8px 2px;overflow-x:auto;}
+  figure.chart svg{display:block;width:100%;height:auto;min-width:640px;}
+  figure.chart figcaption{font-size:12px;color:var(--muted);margin-top:.55rem;line-height:1.7;}
+  .ax{font-family:var(--mono);font-size:10.5px;fill:var(--muted);}
+  .axt{font-family:var(--mono);font-size:11px;fill:var(--muted);}
+  .lbl{font-family:var(--mono);font-size:11px;fill:var(--ink);}
+  .lblm{font-family:var(--mono);font-size:10.5px;fill:var(--muted);}
+  footer{max-width:680px;margin:3.2rem auto 0;font-size:12px;color:var(--muted);
+    border-top:1px solid var(--line);padding-top:1.2rem;}
+  a{color:var(--ink);}
+  a:focus-visible{outline:2px solid var(--rule);outline-offset:2px;}
+</style>
+</head>
+<body>
+
+
+<header class="hd">
+  <div class="kicker">PHASE 7 · 13 — SCALING LAWS · 中文笔记</div>
+  <h1>Scaling Laws：把「大力出奇迹」写成公式</h1>
+  <div class="specline">Kaplan 2020 · Hoffmann（Chinchilla）2022 · L(N,D) = E + A/N^α + B/D^β · C ≈ 6ND</div>
+  <div class="thesis">
+    <p>深度学习最重要的经验发现之一：把参数 N、数据 D、算力 C 各放大十倍、千倍、百万倍，交叉熵损失沿一条 log-log 直线平滑下滑——是幂律，没有突变，也没有观测到饱和。由此背出五条可操作的「真理」：<b>规模压倒形状、损失可预测、算力要分账、最优随目标改变、底线到不了</b>。它不承诺智能免费，只公布价格表：可消减的那部分损失每减半，算力约要 ×90。</p>
+  </div>
+</header>
+
+<div class="col">
+  <h2>1 · 现象：一条跨过七个数量级的直线</h2>
+  <p>2020 年 Kaplan 等人把上百个不同大小的 Transformer 语言模型的最终损失画到双对数纸上，得到三条几乎笔直的线——分别对着参数 N、数据 D、算力 C（每次只放大一个、其余不设瓶颈）：</p>
+  <pre><code>L(N) ∝ N^(−0.076)      参数扩 10 倍 → 可消减损失 ×10^(−0.076) ≈ ×0.84
+L(D) ∝ D^(−0.095)      数据扩 10 倍 → ×0.80
+L(C) ∝ C^(−0.050)      算力扩 10 倍 → ×0.89
+（Kaplan 2020 的拟合指数；具体数值依赖分词器与数据集，形状不依赖）</code></pre>
+  <p>「幂律」有两个读法。<b>读法一：log-log 直线</b>——横竖轴都取对数后是直线，于是跨过七个数量级不弯、不断、不跳。<b>读法二：无特征尺度</b>——曲线上不存在一个「开窍点」；在 10⁷ 参数处 ×10 和在 10¹¹ 参数处 ×10，按比例算回报率相同。所谓「真理」，首先就是这条曲线的平滑本身：<b>模型变强不靠灵感和运气，是规模的连续函数</b>。</p>
+  <figure class="chart">
+    <div class="frame">
+    <svg viewBox="0 0 720 400" role="img" aria-label="计算最优前沿上的损失随训练算力的下降曲线，逼近 E=1.69 的水平线">
+      <text class="axt" x="70" y="16">交叉熵损失 L（nats/token）</text>
+      <line x1="70" y1="293.2" x2="700" y2="293.2" stroke="var(--line)" stroke-width="1"/>
+      <line x1="70" y1="209.7" x2="700" y2="209.7" stroke="var(--line)" stroke-width="1"/>
+      <line x1="70" y1="126.2" x2="700" y2="126.2" stroke="var(--line)" stroke-width="1"/>
+      <line x1="70" y1="42.7" x2="700" y2="42.7" stroke="var(--line)" stroke-width="1"/>
+      <line x1="70" y1="360" x2="700" y2="360" stroke="var(--line)" stroke-width="1"/>
+      <text class="ax" x="62" y="296.7" text-anchor="end">2.0</text>
+      <text class="ax" x="62" y="213.2" text-anchor="end">2.5</text>
+      <text class="ax" x="62" y="129.7" text-anchor="end">3.0</text>
+      <text class="ax" x="62" y="46.2" text-anchor="end">3.5</text>
+      <text class="ax" x="70" y="376" text-anchor="middle">10¹⁸</text>
+      <text class="ax" x="196" y="376" text-anchor="middle">10²⁰</text>
+      <text class="ax" x="322" y="376" text-anchor="middle">10²²</text>
+      <text class="ax" x="448" y="376" text-anchor="middle">10²⁴</text>
+      <text class="ax" x="574" y="376" text-anchor="middle">10²⁶</text>
+      <text class="ax" x="700" y="376" text-anchor="middle">10²⁸</text>
+      <text class="axt" x="385" y="394" text-anchor="middle">训练算力 C（FLOPs，log 刻度）</text>
+      <line x1="70" y1="345" x2="700" y2="345" stroke="var(--muted)" stroke-width="1.25" stroke-dasharray="5 4"/>
+      <text class="lblm" x="76" y="340">E ≈ 1.69：语言自身的熵，无限规模也到不了的底</text>
+      <polyline points="70,36.8 133,36.8 133,128.6" fill="none" stroke="var(--muted)" stroke-width="1" stroke-dasharray="2 3"/>
+      <text class="lblm" x="99" y="54" text-anchor="middle">算力 ×10</text>
+      <text class="lblm" x="140" y="88">loss −0.55</text>
+      <polyline points="448,308.1 511,308.1 511,319.1" fill="none" stroke="var(--muted)" stroke-width="1" stroke-dasharray="2 3"/>
+      <text class="lblm" x="479" y="303" text-anchor="middle">×10</text>
+      <text class="lblm" x="518" y="316">−0.07</text>
+      <polyline fill="none" stroke="var(--ink)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+        points="70,36.8 85.8,62.9 101.5,86.7 117.2,108.6 133,128.6 148.8,146.9 164.5,163.6 180.2,179 196,193 211.8,205.9 227.5,217.6 243.2,228.4 259,238.3 274.8,247.3 290.5,255.6 306.2,263.1 322,270.1 337.8,276.4 353.5,282.2 369.2,287.5 385,292.4 400.8,296.8 416.5,300.9 432.2,304.6 448,308 463.8,311.2 479.5,314 495.2,316.6 511,319 526.8,321.2 542.5,323.2 558.2,325.1 574,326.8 589.8,328.3 605.5,329.7 621.2,331 637,332.2 652.8,333.3 668.5,334.3 684.2,335.2 700,336"/>
+      <line x1="410" y1="275" x2="415" y2="288" stroke="var(--muted)" stroke-width="1"/>
+      <circle cx="416.4" cy="292.8" r="4.5" fill="var(--ink)" stroke="var(--bg)" stroke-width="2"><title>GPT-3：N=175B，D=300B，C≈3.2×10²³，公式预测 L=2.002（同算力前沿 1.954）</title></circle>
+      <text class="lbl" x="408" y="272" text-anchor="end">GPT-3</text>
+      <line x1="446" y1="327" x2="436" y2="308" stroke="var(--muted)" stroke-width="1"/>
+      <circle cx="433.5" cy="303.8" r="4.5" fill="var(--ink)" stroke="var(--bg)" stroke-width="2"><title>Chinchilla：N=70B，D=1.4T，C≈5.9×10²³，公式预测 L=1.937（同算力前沿 1.930）</title></circle>
+      <text class="lbl" x="448" y="332">Chinchilla</text>
+    </svg>
+    </div>
+    <figcaption>计算最优前沿上的损失 L*(C)：每个算力预算 C 下、把 N 与 D 分到最优时能达到的最低损失（用本课 <code>code/main.py</code> 的 Chinchilla 拟合常数画出）。三个看点：曲线平滑无踩点；同样「算力 ×10」，左端买到 −0.55，右端只买到 −0.07（§6）；整条线压不进 E = 1.69 的虚线（≈2.4 bit/词元）。两个圆点同处一档算力（≈3–6×10²³ FLOPs）：GPT-3（175B×300B）因分账失衡浮在前沿上方，Chinchilla（70B×1.4T）几乎贴线——这是 §4 的伏笔。</figcaption>
+  </figure>
+
+  <h2>2 · 真理一：规模压倒形状——N、D、C 是指数，架构是常数</h2>
+  <p>同一批实验里 Kaplan 还测了「形状」：固定参数量 N，把网络排成深而窄、浅而宽，改注意力头数、改 FFN 宽窄比——在很宽的范围内，<b>损失只差百分之几</b>。而 N、D、C 每动一个数量级，损失动的是档位。写成一句话：</p>
+  <div class="panel">
+    <p class="pt">规模压倒形状</p>
+    <p>在「模型是不是够大、喂没喂饱、算力给没给够」面前，「网络长什么样」是二阶小量。架构的好坏体现为<b>换一条更低的线</b>（改常数项 A、B），规模的作用是<b>沿着线往前走</b>（走指数项）。前提是架构得先「够格上线」——同实验里 LSTM 加深加宽会提前饱和，根本画不出这条持续下行的直线；Transformer 能。</p>
+  </div>
+  <p>这是 Sutton「苦涩的教训」（2019）的定量版：能吃下算力的通用方法，最终赢过精巧的人工设计。它直接改变了 2020 年以后的研发分工——调结构的收益封顶在几个百分点，于是主力资源转向抬 N、D、C；结构创新要证明自己，标准也变成了「你把线平移了多少」（§8 的「等效算力」）。</p>
+
+  <h2>3 · 真理二：损失可预测——训练从赌博变成工程</h2>
+  <p>直线最值钱的性质是<b>可外推</b>。在小尺度训练一排模型，拟合出常数和指数，就能填出千倍、万倍算力处的损失。GPT-4 技术报告给过实证：用不超过最终算力 <b>1/10000</b> 的小实验，提前算准了最终训练损失。九位数美元一次的训练敢按下开始键，全部底气就是这条线：<b>先花 1% 的算力买地图，再花 99% 的算力走路</b>。</p>
+  <p>Kaplan 还有一条常被漏掉的附带发现：<b>大模型更省样本</b>——到达同一损失，大模型需要的 token 反而更少。「先把模型做大」在当时不是虚荣，是拟合曲线给出的理性策略。至于「大」了之后算力该怎么在 N 和 D 之间分——他们给的答案是错的，这正是下一条真理。</p>
+
+  <h2>4 · 真理三：算力要分账——C ≈ 6ND，谷底在 N 与 D 齐头并进处</h2>
+  <p>标准 Transformer 里，每个参数每个 token 前向约 2 FLOPs、反向约 4 FLOPs，所以总算力 <code>C ≈ 6·N·D</code>。预算 C 定死之后，N 和 D 就在一条双曲线上此消彼长：模型 ×10，数据就得 ÷10。往哪边分？</p>
+  <p>Kaplan 的答案是「优先加 N」，GPT-3 照办：175B 参数只喂 300B token，<b>1.7 token/参数</b>。2022 年 Hoffmann 等人重做实验（关键修正：学习率衰减日程要按实际 token 预算配齐，Kaplan 没配，系统性低估了数据的价值），结论翻案：<b>N 与 D 应当等比放大</b>，标题数字是 20 token/参数。验证也直接——同一档算力预算（≈6×10²³ FLOPs）下，Chinchilla 用 70B×1.4T 的分法全面胜过 280B×300B 的 Gopher，也胜过 GPT-3，推理成本还便宜 2.5 倍。GPT-3 不是不够大，是<b>饿着</b>。</p>
+  <p>Chinchilla 顺手给出了损失的完整形状，两面「墙」相加，再加一个到不了的底：</p>
+  <pre><code>L(N, D) =   E   +   A/N^α   +   B/D^β
+          ──底──   ──参数墙──   ──数据墙──
+E = 1.69   A = 406.4   B = 410.7   α = 0.34   β = 0.28   （本课 code/main.py 所用拟合）</code></pre>
+  <p>固定 C 沿双曲线滑动，两面墙一边降一边升，损失走出 U 形谷；<b>谷底就是最优分账</b>：</p>
+  <figure class="chart">
+    <div class="frame">
+    <svg viewBox="0 0 720 400" role="img" aria-label="三个算力预算下损失随参数量的 U 形曲线，谷底连成最优前沿">
+      <text class="axt" x="70" y="16">交叉熵损失 L（nats/token）</text>
+      <line x1="70" y1="318.2" x2="700" y2="318.2" stroke="var(--line)" stroke-width="1"/>
+      <line x1="70" y1="234.8" x2="700" y2="234.8" stroke="var(--line)" stroke-width="1"/>
+      <line x1="70" y1="151.3" x2="700" y2="151.3" stroke="var(--line)" stroke-width="1"/>
+      <line x1="70" y1="67.8" x2="700" y2="67.8" stroke="var(--line)" stroke-width="1"/>
+      <line x1="70" y1="360" x2="700" y2="360" stroke="var(--line)" stroke-width="1"/>
+      <text class="ax" x="62" y="321.7" text-anchor="end">2.0</text>
+      <text class="ax" x="62" y="238.3" text-anchor="end">2.4</text>
+      <text class="ax" x="62" y="154.8" text-anchor="end">2.8</text>
+      <text class="ax" x="62" y="71.3" text-anchor="end">3.2</text>
+      <text class="ax" x="70" y="376" text-anchor="middle">10⁸</text>
+      <text class="ax" x="227.5" y="376" text-anchor="middle">10⁹</text>
+      <text class="ax" x="385" y="376" text-anchor="middle">10¹⁰</text>
+      <text class="ax" x="542.5" y="376" text-anchor="middle">10¹¹</text>
+      <text class="ax" x="700" y="376" text-anchor="middle">10¹²</text>
+      <text class="axt" x="385" y="394" text-anchor="middle">参数量 N（log 刻度）——同一条曲线上数据量 D = C/6N</text>
+      <line x1="512" y1="42" x2="530" y2="42" stroke="var(--diag)" stroke-width="2"/>
+      <text class="lblm" x="535" y="46">C=10²⁰</text>
+      <line x1="586" y1="42" x2="604" y2="42" stroke="var(--muted)" stroke-width="2"/>
+      <text class="lblm" x="609" y="46">10²²</text>
+      <line x1="646" y1="42" x2="664" y2="42" stroke="var(--ink)" stroke-width="2"/>
+      <text class="lblm" x="669" y="46">10²⁴</text>
+      <polyline fill="none" stroke="var(--muted)" stroke-width="1.25" stroke-dasharray="5 4"
+        points="140.6,130.9 154.8,148.1 169,164.2 183.3,179.1 197.5,193 211.7,206 225.9,218.1 240.2,229.3 254.4,239.8 268.6,249.6 282.8,258.7 297.1,267.2 311.3,275.1 325.5,282.5 339.7,289.3 354,295.7 368.2,301.7 382.4,307.2 396.7,312.4 410.9,317.2 425.1,321.7 439.3,325.9 453.6,329.8 467.8,333.4 482,336.8 496.2,339.9 510.5,342.9 524.7,345.6 538.9,348.2 553.1,350.5 567.4,352.8 581.6,354.8 595.8,356.7"/>
+      <line x1="244" y1="225" x2="240" y2="231" stroke="var(--muted)" stroke-width="1"/>
+      <text class="lblm" x="248" y="222">最优前沿（谷底连线）</text>
+      <polyline fill="none" stroke="var(--diag)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+        points="70,159.5 77.9,163.7 85.8,167.6 93.6,171.1 101.5,174.4 109.4,177.4 117.3,180.2 125.1,182.6 133,184.8 140.9,186.7 148.8,188.4 156.6,189.8 164.5,190.9 172.4,191.8 180.3,192.5 188.1,192.9 196,193 203.9,193 211.8,192.6 219.6,192.1 227.5,191.3 235.4,190.3 243.3,189 251.1,187.5 259,185.8 266.9,183.8 274.8,181.6 282.6,179.2 290.5,176.5 298.4,173.6 306.3,170.4 314.1,167 322,163.4 329.9,159.5 337.8,155.3 345.6,150.9 353.5,146.2 361.4,141.3 369.3,136 377.1,130.6 385,124.8 392.9,118.7 400.8,112.4 408.6,105.7 416.5,98.8 424.4,91.5 432.3,84 440.1,76.1 448,67.8 455.9,59.3 463.8,50.4 471.6,41.1 479.5,31.5 483.8,26"/>
+      <polyline fill="none" stroke="var(--muted)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+        points="70,204.3 77.9,209.9 85.8,215.3 93.6,220.5 101.5,225.4 109.4,230 117.3,234.5 125.1,238.7 133,242.7 140.9,246.6 148.8,250.2 156.6,253.6 164.5,256.8 172.4,259.9 180.3,262.8 188.1,265.5 196,268 203.9,270.4 211.8,272.6 219.6,274.7 227.5,276.6 235.4,278.4 243.3,280 251.1,281.5 259,282.9 266.9,284.1 274.8,285.2 282.6,286.1 290.5,287 298.4,287.7 306.3,288.2 314.1,288.7 322,289 329.9,289.2 337.8,289.3 345.6,289.3 353.5,289.1 361.4,288.9 369.3,288.5 377.1,288 385,287.4 392.9,286.7 400.8,285.8 408.6,284.8 416.5,283.8 424.4,282.6 432.3,281.3 440.1,279.8 448,278.3 455.9,276.6 463.8,274.8 471.6,272.9 479.5,270.8 487.4,268.7 495.3,266.4 503.1,263.9 511,261.4 518.9,258.7 526.8,255.9 534.6,252.9 542.5,249.8 550.4,246.5 558.3,243.1 566.1,239.5 574,235.8 581.9,231.9 589.8,227.9 597.6,223.6 605.5,219.3 613.4,214.7 621.3,210 629.1,205 637,199.9 644.9,194.6 652.8,189.1 660.6,183.4 668.5,177.5 676.4,171.3 684.3,164.9 692.1,158.3 700,151.5"/>
+      <polyline fill="none" stroke="var(--ink)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+        points="70,216.6 77.9,222.7 85.8,228.5 93.6,234.1 101.5,239.4 109.4,244.5 117.3,249.5 125.1,254.2 133,258.7 140.9,263 148.8,267.2 156.6,271.2 164.5,275 172.4,278.7 180.3,282.1 188.1,285.5 196,288.7 203.9,291.8 211.8,294.7 219.6,297.5 227.5,300.1 235.4,302.7 243.3,305.1 251.1,307.4 259,309.6 266.9,311.7 274.8,313.7 282.6,315.6 290.5,317.4 298.4,319.1 306.3,320.7 314.1,322.2 322,323.6 329.9,325 337.8,326.2 345.6,327.4 353.5,328.5 361.4,329.5 369.3,330.5 377.1,331.4 385,332.2 392.9,332.9 400.8,333.6 408.6,334.2 416.5,334.7 424.4,335.2 432.3,335.6 440.1,336 448,336.2 455.9,336.5 463.8,336.6 471.6,336.7 479.5,336.8 487.4,336.8 495.3,336.7 503.1,336.6 511,336.4 518.9,336.2 526.8,335.9 534.6,335.5 542.5,335.1 550.4,334.6 558.3,334.1 566.1,333.5 574,332.9 581.9,332.2 589.8,331.4 597.6,330.6 605.5,329.7 613.4,328.8 621.3,327.8 629.1,326.7 637,325.6 644.9,324.4 652.8,323.1 660.6,321.8 668.5,320.4 676.4,318.9 684.3,317.4 692.1,315.8 700,314.1"/>
+      <circle cx="197.5" cy="193" r="4.5" fill="var(--diag)" stroke="var(--bg)" stroke-width="2"><title>C=10²⁰ 谷底：N*≈0.65B，D*≈26B，L=2.600</title></circle>
+      <circle cx="339.7" cy="289.3" r="4.5" fill="var(--muted)" stroke="var(--bg)" stroke-width="2"><title>C=10²² 谷底：N*≈5.2B，D*≈320B，L=2.139</title></circle>
+      <circle cx="482" cy="336.8" r="4.5" fill="var(--ink)" stroke="var(--bg)" stroke-width="2"><title>C=10²⁴ 谷底：N*≈42B，D*≈4T，L=1.911</title></circle>
+      <line x1="339.7" y1="277" x2="339.7" y2="283" stroke="var(--muted)" stroke-width="1"/>
+      <text class="lbl" x="339.7" y="272" text-anchor="middle">谷底 = 最优分账</text>
+      <text class="lblm" x="74" y="140">← N 太小：参数墙挡路</text>
+      <text class="lblm" x="430" y="105">N 太大 → D = C/6N 太小：数据墙挡路</text>
+      <text class="lblm" x="450" y="52" text-anchor="end">10²⁰</text>
+      <text class="lblm" x="696" y="140" text-anchor="end">10²²</text>
+      <text class="lblm" x="696" y="302" text-anchor="end">10²⁴</text>
+    </svg>
+    </div>
+    <figcaption>iso-FLOP 曲线：固定算力 C（三条曲线 = 三档预算，深浅表示预算从小到大），沿双曲线 D = C/6N 滑动 N。左臂是参数墙（模型太小学不动），右臂是数据墙（参数多到喂不饱）。谷底连线（虚线）就是图 1 的最优前沿。悬停谷底圆点可看精确数值。</figcaption>
+  </figure>
+  <p>用同一组常数在各档预算下求谷底（<code>code/main.py</code> 的输出）：</p>
+  <div class="tblwrap">
+  <table class="vt">
+    <tr><th>算力 C（FLOPs）</th><th>N*</th><th>D*</th><th>D*/N*</th><th>谷底 L</th></tr>
+    <tr><td>10¹⁸</td><td>78.4M</td><td>2.1B</td><td>27</td><td>3.535</td></tr>
+    <tr><td>10²⁰</td><td>659M</td><td>25.3B</td><td>38</td><td>2.600</td></tr>
+    <tr class="hl"><td>10²²</td><td>5.1B</td><td>330B</td><td>65</td><td>2.139</td></tr>
+    <tr><td>10²⁴</td><td>42.5B</td><td>3.9T</td><td>92</td><td>1.911</td></tr>
+    <tr><td>10²⁵</td><td>117.6B</td><td>14.2T</td><td>120</td><td>1.845</td></tr>
+  </table>
+  </div>
+  <p class="small muted">注脚：表里 D*/N* 从 27 涨到 120，不是恒等于 20——用这组公式常数（论文的方法三拟合，α=0.34、β=0.28 不完全对称）算出的最优配比会随 C 缓慢升高；「20 token/参数」来自论文另外两种实验拟合，对应其研究的算力段（10²²~10²³）。真理在「N 与 D 要一起长」，不在 20 这个具体数字。</p>
+
+  <h2>5 · 真理四：「最优」只对训练账本最优——过训练时代</h2>
+  <p>Chinchilla 的「最优」有严格的限定语：<b>每一训练 FLOP 换到的损失最低</b>。但训练成本付一次，推理成本付到天荒地老。给要服务海量请求的模型算总账，账本就变了：参数 N 直接决定每次推理的 FLOPs，于是值得<b>把模型压小、把训练拉长</b>——故意偏离谷底，用多付的训练算力换永久的推理折扣。</p>
+  <p>用 §4 的公式给这笔交易标价（<code>main.py</code>，预算 C = 10²⁴ 不变）：谷底分法是 42.5B×3.9T、L=1.911；改成 4.2B×39T（N ÷10、D ×10），L=1.971。<b>损失只贵 +0.06，推理从此便宜 10 倍</b>。2026 年的主流模型全在做这道题：</p>
+  <div class="tblwrap">
+  <table class="vt">
+    <tr><th>模型</th><th>N</th><th>D</th><th>D/N</th><th>公式预测 L</th></tr>
+    <tr><td>GPT-3（2020）</td><td>175B</td><td>300B</td><td>1.7</td><td>2.002</td></tr>
+    <tr><td>Chinchilla（2022）</td><td>70B</td><td>1.4T</td><td>20</td><td>1.937</td></tr>
+    <tr><td>Llama 2 70B</td><td>70B</td><td>2T</td><td>29</td><td>1.921</td></tr>
+    <tr class="hl"><td>Llama 3 8B</td><td>8B</td><td>15T</td><td>1875</td><td>1.949</td></tr>
+    <tr><td>Llama 3 70B</td><td>70B</td><td>15T</td><td>214</td><td>1.857</td></tr>
+    <tr><td>DeepSeek-V3（按激活参数）</td><td>37B</td><td>14.8T</td><td>400</td><td>1.878</td></tr>
+    <tr><td>Qwen 2.5 72B</td><td>72B</td><td>18T</td><td>250</td><td>1.852</td></tr>
+  </table>
+  </div>
+  <p>读这张表：GPT-3 在 D/N=1.7 处挨饿；Chinchilla 站在 20 的谷底；Llama 3 8B 冲到 <b>1875</b>——超过谷底配比约 90 倍，损失只比同数据的 70B 版本高 0.09，却能塞进一张消费级显卡。Sardana &amp; Frankle（2024）把这套「把推理写进目标函数」的账算成了正式公式：推理量越大，合理配比越往 100~500 token/参数走。</p>
+  <div class="panel">
+    <p class="pt">这条真理的正确读法</p>
+    <p>定律没有被推翻，被换掉的是目标函数。scaling law 给出的是<b>换算率</b>（多付多少训练 FLOPs ⇌ 省多少损失/推理 FLOPs），至于优化什么——训练成本、服务成本、还是显存上限——由你的业务定。「最优」永远是「对某个账本的最优」。</p>
+  </div>
+
+  <h2>6 · 真理五：有一条到不了的底——E，数据自身的熵</h2>
+  <p>公式里的 E = 1.69 nats/token（≈2.4 bit/词元）是 N→∞、D→∞ 都消不掉的<b>不可约损失</b>。剩下的这部分不是模型笨，是语言本身：给定上文，下一个词天然存在真随机（「我中午吃了___」），以及文本里根本不含答案的信息。损失到不了 0，也不该指望——能完美预测下一个词，等于宣称世界是一篇确定性的文章。</p>
+  <p>底线的存在把「收益递减」变成了精确陈述。在最优前沿上，可消减损失 L−E ∝ C^(−0.15)（本课常数）：</p>
+  <div class="panel">
+    <p class="pt">价格表</p>
+    <p>算力 ×10 → 可消减损失剩 70%；想把它<b>减半，要付约 91 倍算力</b>；图 1 里同样宽的一步，左端买到 −0.55、右端只剩 −0.07。越接近底线，每个数量级的算力买到的绝对进步越小——而算力是按数量级涨价的。</p>
+  </div>
+  <p>所以「继续堆算力」在 10²⁶ FLOPs 时代不再是万能答案：超过谷底配比千倍以后，log-loss 的变化已接近测量噪声。这不是 scaling 的失败，是这条幂律自己预言的形状——它同时解释了为什么 2024 年以后的重心转向 §8 的那些「搬常数」的杠杆。</p>
+
+  <h2>7 · 真理的边界：loss 平滑，不等于能力平滑</h2>
+  <p>2022 年流行过一种说法：算术、多步推理等能力会在某个规模「涌现」——曲线上毫无征兆，某一档突然会了。若为真，幂律的可预测性就废了一半：损失可测，能力不可测，预算还是没法排。</p>
+  <p>Schaeffer 等人（2023）给出泼冷水的解释：<b>跳变多半是打分函数制造的</b>。「五位数乘法」用全对才得分的 exact-match 打分，模型每一位数字的正确率其实在平滑上升，「整题全对」的概率自然像开关一样啪地翻转——把不连续的尺子换成连续指标（逐 token 交叉熵），同一批模型的曲线就平滑了。海市蜃楼在尺子里,不在模型里。</p>
+  <p>2026 年的工程共识：<b>预算规划一律对着连续指标做</b>，基准分数的跳变先怀疑打分方式。但边界依然真实：定律预测的是分数，不是体验——某个具体产品能力（写对 SQL、按格式回话）何时跨过「够用」的门槛，仍然要实测。<b>真理管损失，不管惊喜。</b></p>
+
+  <h2>8 · 定律不是宿命：常数会搬家，形状不动</h2>
+  <p>2022 → 2026 年所有让训练「更划算」的进步，放进公式看做的都是同一件事：<b>改常数，不改形状</b>。业内把这记成「等效算力倍增器」——好数据、好优化器让每个 FLOP 顶两个用，整条线向左平移，指数与底线 E 原地不动：</p>
+  <div class="tblwrap">
+  <table class="vt">
+    <tr><th>杠杆</th><th style="text-align:left">动了公式的哪里</th><th>等效算力</th></tr>
+    <tr><td>数据清洗（Phi 式）</td><td style="text-align:left;font-family:var(--sans)">同样的 D 含更多信息 → 常数 B 变小</td><td>&gt;2×</td></tr>
+    <tr><td>Muon 优化器</td><td style="text-align:left;font-family:var(--sans)">同 loss 少走一半步数 → 常数整体平移</td><td>≈2×</td></tr>
+    <tr><td>MoE 稀疏化</td><td style="text-align:left;font-family:var(--sans)">N 改按「激活参数」记账，总参数解耦</td><td>随激活比</td></tr>
+    <tr><td>合成数据</td><td style="text-align:left;font-family:var(--sans)">模型造 D 喂下一代 → 可复利</td><td>开放问题</td></tr>
+  </table>
+  </div>
+  <p>同时，旧坐标轴在撞墙：全网过滤后的高质量英文 token 只有约 5~10T，预训练正逼近<b>数据墙</b>。于是 scaling 换了坐标轴接着画线——RL 后训练的样本量（早期证据：也是幂律，指数不同）、推理时算力（让模型多想几步再答）。<b>规模化没有结束，只是换了自变量。</b></p>
+
+  <h2>9 · 不训大模型的人，拿这些真理做什么</h2>
+  <div class="panel">
+    <p class="pt">三个日常决策</p>
+    <p>① <b>微调数据够不够</b>：任务数据远少于底模参数量的 20 token/参数时，预期损失会在某个地板上饱和——先补数据，别先怪超参。</p>
+    <p>② <b>选底模看账本</b>：预算大头在推理，就选小而长训（高 D/N）的模型，而不是「同损失里最大的」——Llama 3 8B 式的选项就是为你造的（§5）。</p>
+    <p>③ <b>知道收益递减在哪</b>：为最后 0.01 的损失付 10 倍价钱之前，先确认你的产品指标是连续改善的（§7），否则这笔算力买不到体感。</p>
+  </div>
+  <p>整套定律自己动手验证只要几行（与 <code>code/main.py</code> 同一组常数）：</p>
+  <pre><code>A, B, alpha, beta, E = 406.4, 410.7, 0.34, 0.28, 1.69
+def loss(N, D): return E + A/N**alpha + B/D**beta
+def best(C):                      # 固定 C=6ND，在 log N 网格上找谷底
+    grid = (10**(6 + i*0.01) for i in range(700))
+    return min(((N, C/(6*N), loss(N, C/(6*N))) for N in grid), key=lambda t: t[2])
+for C in (1e20, 1e22, 1e24):
+    N, D, L = best(C)
+    print(f"C={C:.0e}  N*={N:.2e}  D*={D:.2e}  D/N={D/N:.0f}  L={L:.3f}")</code></pre>
+  <p class="small muted">自检：跑出的三行应当与 §4 的表格一致；把 GPT-3 的 (175e9, 300e9) 代入 <code>loss()</code> 应得 ≈2.002，把 Chinchilla 的 (70e9, 1.4e12) 代入应得 ≈1.937——同一档算力，分账不同，命运不同。</p>
+</div>
+
+<footer>
+  <p>本篇是 <code>13-scaling-laws</code> 课的中文笔记，图表与表格数值全部由本课 <code>code/main.py</code> 的 Chinchilla 拟合常数算出 · 原文课程：<a href="./en.md">en.md</a></p>
+  <p>论文：<a href="https://arxiv.org/abs/2001.08361">Kaplan et al. 2020</a>（第一条幂律）· <a href="https://arxiv.org/abs/2203.15556">Hoffmann et al. 2022</a>（Chinchilla 分账）· <a href="https://arxiv.org/abs/2304.15004">Schaeffer et al. 2023</a>（涌现之辩）· <a href="https://arxiv.org/abs/2401.00448">Sardana &amp; Frankle 2024</a>（把推理写进目标函数）</p>
+</footer>
+
+</body>
+</html>
