@@ -167,6 +167,18 @@ Attention(Q, K, V) = softmax( Q @ K^T / sqrt(dk) ) @ V
 softmax-attention-scaling
 ```
 
+### The Whole Pipeline on Three Real Tokens
+
+Here is the entire mechanism on one page - three tokens, real numbers, no hidden steps. Each embedding of "the lazy dog" is projected into a query, a key, and a value; queries meet keys in the dot products; each row of scores is normalised into weights; the weights blend the value vectors into the output.
+
+![Attention worked example: "the lazy dog" flowing through Q/K/V projections, dot-product scores, normalised weights, and the weighted sum of values](../assets/attention-worked-example.svg)
+
+Follow one row end to end. Token 1 ("the") has query Q1 = (0, 1, 0). Its dot products with the three keys give scores (0, 0, 1) - the query matches only K3. Normalising that row leaves weights (0, 0, 1), so the output for "the" is a pure copy of V3 = (1, -1), the value carried by "dog". Token 3 ("dog") scores (1, 2, 3) against the keys, which normalise to (1/6, 1/3, 1/2) - a genuine blend of all three values.
+
+One deliberate simplification to notice: this figure turns scores into weights by dividing each row by its sum (the Z^-1 A step) instead of applying softmax - the source paper calls this a linear kernel. Softmax does the same job (make each row non-negative and sum to 1) but exponentiates first, which keeps weights positive for any scores and sharpens the gap between them. Everything else - projections, dot products, weighted sum - is exactly the computation you are about to implement.
+
+The figure is from page 3 of Serret's "Understanding Transformers and Attention Mechanisms" preprint; a copy ships in this repo at `papers/understanding_transformer_and_attention.pdf`.
+
 ## Build It
 
 ### Step 1: Softmax from scratch
@@ -330,5 +342,6 @@ This lesson produces:
 ## Further Reading
 
 - [Attention Is All You Need (Vaswani et al., 2017)](https://arxiv.org/abs/1706.03762) - the original transformer paper
+- [Understanding Transformers and Attention Mechanisms: An Introduction for Applied Mathematicians (Serret, 2026)](https://arxiv.org/abs/2604.00965) - source of the worked example above; a copy lives in [`papers/`](../../../../papers/understanding_transformer_and_attention.pdf)
 - [The Illustrated Transformer (Jay Alammar)](https://jalammar.github.io/illustrated-transformer/) - best visual walkthrough of the full architecture
 - [The Annotated Transformer (Harvard NLP)](https://nlp.seas.harvard.edu/annotated-transformer/) - line-by-line PyTorch implementation with explanations

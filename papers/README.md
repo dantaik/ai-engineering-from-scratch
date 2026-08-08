@@ -52,3 +52,11 @@
 - **#36 Test-Time Scaling**：取 Snell et al. 的奠基工作；把这个词带火的 s1 为 [arXiv:2501.19393](https://arxiv.org/abs/2501.19393)。
 - **#37 Muon**：Keller Jordan 的原始版本只有博客与代码，arXiv 上的标准引用是月之暗面的规模化验证论文。
 - **#03 / #04 GPT-1、GPT-2**：从未上 arXiv，PDF 来自 OpenAI 官网。
+
+## 补充 · 教程与讲义
+
+不进主线编号的入门与综述类材料：
+
+| 文件 | 内容 | 来源 |
+|------|------|------|
+| `understanding_transformer_and_attention.pdf` | Understanding Transformers and Attention Mechanisms: An Introduction for Applied Mathematicians（Serret, 2026）——面向应用数学读者的注意力机制与 Transformer 讲义。第 3 页「the lazy dog」三 token 全流程数值算例已嵌入 [Phase 7 · Lesson 2「Self-Attention from Scratch」](../phases/07-transformers-deep-dive/02-self-attention-from-scratch/docs/en.md) | [arXiv:2604.00965](https://arxiv.org/abs/2604.00965) |
