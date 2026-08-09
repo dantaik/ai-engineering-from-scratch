@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>同一副骨架，六次换件：2017 vs 2026 Transformer 块</title>
+<style>
+  :root{
+    --bg:#FFFFFF; --ink:#1A1A1A; --muted:#6E6E6E; --line:#E3E3E3; --rule:#2E2E2E;
+    --code-bg:#F6F6F6; --old-ink:#9A9A9A; --old-bg:#FAFAFA; --new-bg:#F3F3F3;
+    --chip-bg:#EFEFEF; --chip-ink:#3A3A3A;
+    --sans:"PingFang SC","Microsoft YaHei","Noto Sans CJK SC",-apple-system,"Segoe UI",sans-serif;
+    --mono:"SF Mono",ui-monospace,Consolas,"JetBrains Mono",Menlo,monospace;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --bg:#131313; --ink:#DCDCDC; --muted:#909090; --line:#2C2C2C; --rule:#C9C9C9;
+      --code-bg:#1C1C1C; --old-ink:#6E6E6E; --old-bg:#161616; --new-bg:#222222;
+      --chip-bg:#252525; --chip-ink:#C8C8C8;
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#131313; --ink:#DCDCDC; --muted:#909090; --line:#2C2C2C; --rule:#C9C9C9;
+    --code-bg:#1C1C1C; --old-ink:#6E6E6E; --old-bg:#161616; --new-bg:#222222;
+    --chip-bg:#252525; --chip-ink:#C8C8C8;
+  }
+  :root[data-theme="light"]{
+    --bg:#FFFFFF; --ink:#1A1A1A; --muted:#6E6E6E; --line:#E3E3E3; --rule:#2E2E2E;
+    --code-bg:#F6F6F6; --old-ink:#9A9A9A; --old-bg:#FAFAFA; --new-bg:#F3F3F3;
+    --chip-bg:#EFEFEF; --chip-ink:#3A3A3A;
+  }
+
+  body{background:var(--bg);color:var(--ink);font-family:var(--sans);
+    font-size:14px;line-height:1.85;margin:0;padding:0 20px 80px;-webkit-font-smoothing:antialiased;}
+  .col{max-width:680px;margin:0 auto;}
+  .wide{max-width:880px;margin:1.8rem auto;}
+
+  header.hd{max-width:680px;margin:52px auto 0;padding-bottom:1.2rem;border-bottom:1px solid var(--rule);}
+  .kicker{font-family:var(--mono);font-size:11px;letter-spacing:.08em;color:var(--muted);}
+  h1{font-size:21px;font-weight:700;margin:.5rem 0 .6rem;letter-spacing:.01em;text-wrap:balance;}
+  .specline{font-family:var(--mono);font-size:12px;color:var(--muted);}
+  .thesis{margin:1.2rem 0 0;padding:2px 0 2px 16px;border-left:2px solid var(--rule);}
+  .thesis p{margin:0;font-size:13.5px;}
+
+  h2{font-family:var(--mono);font-size:14px;font-weight:700;letter-spacing:.02em;
+    border-top:1px solid var(--line);padding-top:1.8rem;margin:3rem 0 1rem;}
+  h2 .n{color:var(--muted);font-weight:400;margin-right:.6em;}
+  h3{font-size:13.5px;font-weight:700;margin:1.9rem 0 .55rem;}
+  p{margin:.8rem 0;}
+  .muted{color:var(--muted);}
+  .small{font-size:12.5px;}
+  strong{font-weight:700;}
+
+  a{color:var(--ink);text-decoration:underline;text-underline-offset:3px;text-decoration-color:var(--muted);}
+  a:focus-visible{outline:2px solid var(--rule);outline-offset:2px;}
+
+  pre{background:var(--code-bg);border:1px solid var(--line);border-radius:4px;
+    padding:12px 16px;overflow-x:auto;font-family:var(--mono);font-size:12px;line-height:1.75;margin:1rem 0;}
+  code{font-family:var(--mono);font-size:.92em;background:var(--code-bg);border-radius:3px;padding:.06em .35em;}
+  pre code{background:none;padding:0;}
+
+  table{border-collapse:collapse;width:100%;font-size:13px;font-variant-numeric:tabular-nums;}
+  .tbl-wrap{overflow-x:auto;border:1px solid var(--line);border-radius:4px;}
+  th{font-family:var(--mono);font-size:11.5px;letter-spacing:.04em;text-align:left;
+    color:var(--muted);font-weight:700;border-bottom:1px solid var(--rule);padding:9px 12px;white-space:nowrap;}
+  td{border-bottom:1px solid var(--line);padding:8px 12px;vertical-align:top;}
+  tr:last-child td{border-bottom:none;}
+  td.c2017{color:var(--old-ink);}
+  td.mono, th.mono{font-family:var(--mono);font-size:12px;}
+
+  .chip{display:inline-block;font-family:var(--mono);font-size:10.5px;letter-spacing:.05em;
+    background:var(--chip-bg);color:var(--chip-ink);border-radius:3px;padding:.1em .6em;margin:.12em .25em .12em 0;white-space:nowrap;}
+  .who{margin:.9rem 0 0;}
+  .who .lbl{font-family:var(--mono);font-size:10.5px;letter-spacing:.06em;color:var(--muted);margin-right:.5em;}
+
+  .duo{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:1.2rem 0;}
+  @media (max-width:640px){.duo{grid-template-columns:1fr;}}
+  .duo .cell{border:1px solid var(--line);border-radius:4px;padding:12px 16px 14px;}
+  .duo .cell.old{background:var(--old-bg);color:var(--old-ink);}
+  .duo .cell.new{background:var(--bg);}
+  .duo .tag{font-family:var(--mono);font-size:10.5px;letter-spacing:.08em;color:var(--muted);
+    display:block;margin-bottom:.5rem;}
+  .duo .cell.new .tag{color:var(--ink);}
+  .duo p{margin:.45rem 0;font-size:13px;}
+  .duo pre{margin:.6rem 0 .2rem;background:var(--code-bg);}
+  .duo .cell.old pre{color:var(--old-ink);}
+
+  .why{margin:1rem 0;padding:2px 0 2px 16px;border-left:2px solid var(--line);}
+  .why .lbl{font-family:var(--mono);font-size:10.5px;letter-spacing:.08em;color:var(--muted);display:block;}
+  .why p{margin:.3rem 0 0;font-size:13.5px;}
+
+  .flow{display:grid;grid-template-columns:1fr 1fr;gap:24px;overflow-x:auto;padding:4px;}
+  @media (max-width:640px){.flow{grid-template-columns:1fr;}}
+  .lane{min-width:0;}
+  .lane .lane-t{font-family:var(--mono);font-size:11px;letter-spacing:.06em;color:var(--muted);
+    text-align:center;margin-bottom:.7rem;}
+  .lane.now .lane-t{color:var(--ink);font-weight:700;}
+  .lane .bx{border:1px solid var(--rule);border-radius:4px;padding:6px 10px;text-align:center;
+    font-family:var(--mono);font-size:11.5px;line-height:1.6;background:var(--bg);}
+  .lane .bx small{display:block;font-family:var(--sans);font-size:10.5px;color:var(--muted);}
+  .lane .bx.norm{border-style:dashed;background:var(--new-bg);}
+  .lane .bx.io{border:none;background:none;color:var(--muted);padding:2px;}
+  .lane .ar{text-align:center;color:var(--muted);font-size:12px;line-height:1.5;}
+  .lane .ar em{font-style:normal;font-family:var(--mono);font-size:10px;letter-spacing:.03em;}
+  .lane.past .bx{border-color:var(--old-ink);color:var(--old-ink);}
+  .lane.past .bx.norm{background:var(--old-bg);}
+  .lane.past .bx small{color:var(--old-ink);}
+
+  .verdict{border:1px solid var(--rule);border-radius:4px;padding:14px 18px;margin:1.6rem 0;}
+  .verdict .lbl{font-family:var(--mono);font-size:10.5px;letter-spacing:.08em;color:var(--muted);}
+  .verdict p{margin:.4rem 0 0;font-size:13.5px;}
+
+  footer{max-width:680px;margin:4rem auto 0;padding-top:1.2rem;border-top:1px solid var(--line);
+    font-size:12px;color:var(--muted);}
+  footer p{margin:.5rem 0;}
+</style>
+</head>
+<body>
+<header class="hd">
+  <div class="kicker">phases/07 · transformers-deep-dive · 05-full-transformer · 中文补充讲义</div>
+  <h1>同一副骨架，六次换件：2017 原版 Transformer vs 2026 生产级方案</h1>
+  <div class="specline">LayerNorm→RMSNorm · ReLU→SwiGLU · 4×→2.6× · Sinusoidal→RoPE · MHA→GQA/MLA · bias→无</div>
+  <div class="thesis">
+    <p>骨架自 2017 年一天没变：embedding → N × (attention + FFN + 残差 + norm) → 输出头，attention 公式还是那一行 softmax(QKᵀ/√d)V。变的是六个零件——两个为了同参数下更好的质量（SwiGLU、RoPE），一个为了训练稳定（配套的 pre-norm），三个为了推理经济学（GQA/MLA、RMSNorm、去 bias）。这份讲义把课程表格的六行逐行拆开：2017 怎么做、2026 怎么做、为什么换、谁在用。</p>
+  </div>
+</header>
+
+<div class="col">
+
+<h2><span class="n">序</span>先看全景：一个 block 的两张数据通路</h2>
+
+<p>下图左右各是一层 decoder block（现代主流的 decoder-only 视角，省去 cross-attention）。左边按 2017 原始论文（post-norm），右边按 2026 生产默认（pre-norm）。虚线框是归一化——注意它<strong>换了名字，也换了位置</strong>：</p>
+
+</div>
+
+<div class="wide">
+<div class="flow">
+  <div class="lane past">
+    <div class="lane-t">2017 · Vaswani 原版（post-norm）</div>
+    <div class="bx io">x（入口已加 sinusoidal 位置向量）</div>
+    <div class="ar">↓</div>
+    <div class="bx">Full MHA<small>全部头各带 K/V · 线性层带 bias</small></div>
+    <div class="ar">↓ <em>+ x（残差）</em></div>
+    <div class="bx norm">LayerNorm<small>减均值 · 除标准差 · γ 缩放 + β 平移</small></div>
+    <div class="ar">↓</div>
+    <div class="bx">FFN：W₂·ReLU(W₁x + b₁) + b₂<small>两个矩阵 · 中间层 4×d</small></div>
+    <div class="ar">↓ <em>+（残差）</em></div>
+    <div class="bx norm">LayerNorm</div>
+    <div class="ar">↓</div>
+    <div class="bx io">out</div>
+  </div>
+  <div class="lane now">
+    <div class="lane-t">2026 · 生产默认（pre-norm）</div>
+    <div class="bx io">x（embedding 不加位置信号）</div>
+    <div class="ar">↓</div>
+    <div class="bx norm">RMSNorm<small>只除 RMS · 只有 γ · 无平移项</small></div>
+    <div class="ar">↓</div>
+    <div class="bx">GQA（Q/K 现场做 RoPE 旋转）<small>KV 头按组共享 · 全线性层无 bias</small></div>
+    <div class="ar">↓ <em>+ x（残差直通，不穿 norm）</em></div>
+    <div class="bx norm">RMSNorm</div>
+    <div class="ar">↓</div>
+    <div class="bx">FFN：W₂·(SiLU(W₁x) ⊙ W₃x)<small>三个矩阵（SwiGLU）· 中间层 ≈2.6×d</small></div>
+    <div class="ar">↓ <em>+（残差直通）</em></div>
+    <div class="bx io">out</div>
+  </div>
+</div>
+</div>
+
+<div class="col">
+
+<p>右边这一列就是 2026 年你打开 Llama、Qwen、Mistral、DeepSeek 任何一个开源权重看到的东西。课程 10·14 的判断：<strong>前沿开源模型 = 你从 GPT-2 学到的同一家族 + 五六个具体改动，你已会的数学覆盖它们 95%</strong>。下面按表格顺序，一行一节。</p>
+
+<h2><span class="n">换件 1 / 6</span>归一化：LayerNorm → RMSNorm</h2>
+
+<div class="duo">
+  <div class="cell old">
+    <span class="tag">2017 · LayerNorm</span>
+    <pre>μ = mean(x)         σ² = var(x)
+y = γ ⊙ (x − μ)/√(σ² + ε) + β</pre>
+    <p>四步：减均值、除标准差、γ 缩放、β 平移。两组可学参数（γ、β）。</p>
+  </div>
+  <div class="cell new">
+    <span class="tag">2026 · RMSNorm</span>
+    <pre>RMS(x) = √(mean(x²) + ε)
+y = γ ⊙ x / RMS(x)</pre>
+    <p>两步：除 RMS、γ 缩放。不减均值，没有 β。一组参数。</p>
+  </div>
+</div>
+
+<div class="why"><span class="lbl">为什么换 · 动机：省算力，稳定性不减</span>
+<p>RMSNorm 砍掉的是"中心化"：少一次对整个隐向量的均值归约，少一组平移参数。课程原话——省计算，且<strong>经验上至少一样稳定</strong>（empirically at least as stable）。归一化在每层出现两次、每个 token 都要算，这笔小账乘以层数和序列长度就不小了。这是典型的"消融后发现没用就删"：均值那一项对训练质量的贡献测不出来，于是不再付它的钱。</p>
+</div>
+
+<p><strong>表格外的隐藏换件：位置也挪了（post-norm → pre-norm）。</strong>2017 年的写法是 <code>LN(x + sublayer(x))</code>——归一化站在残差相加<em>之后</em>，梯度回传必须穿过它。堆到十几层以上就难训，需要精细的学习率 warmup 伺候。2019 年后大家改成 <code>x + sublayer(LN(x))</code>——归一化挪到子层<em>之前</em>，残差通道从头到尾是一条干净的直通线，梯度畅行无阻，深堆叠稳定。课程 05 的结论：pre-norm 是 2026 默认，Llama、Qwen、GPT-3+、Mistral 全部在用。</p>
+
+<div class="who"><span class="lbl">谁在用</span><span class="chip">Llama 全系</span><span class="chip">Qwen</span><span class="chip">Mistral</span><span class="chip">DeepSeek-V3</span><span class="chip">ModernBERT（encoder 侧也换了）</span></div>
+
+<h2><span class="n">换件 2 / 6</span>FFN 激活：ReLU → SwiGLU</h2>
+
+<div class="duo">
+  <div class="cell old">
+    <span class="tag">2017 · ReLU FFN（两个矩阵）</span>
+    <pre>FFN(x) = W₂ · max(0, W₁x + b₁) + b₂
+
+W₁: d → 4d
+W₂: 4d → d</pre>
+    <p>升维、硬开关（负数归零）、降维。</p>
+  </div>
+  <div class="cell new">
+    <span class="tag">2026 · SwiGLU（三个矩阵）</span>
+    <pre>FFN(x) = W₂ · ( SiLU(W₁x) ⊙ W₃x )
+
+SiLU(z) = z · σ(z)
+W₁, W₃: d → h    W₂: h → d</pre>
+    <p>两条支路逐元素相乘（⊙），再降维。</p>
+  </div>
+</div>
+
+<div class="why"><span class="lbl">为什么换 · 动机：同参数下质量更好</span>
+<p>结构上的新东西是<strong>门控</strong>：W₃x 这条支路算"内容"，SiLU(W₁x) 这条支路算"每一维放行多少"，逐元素相乘等于一个由数据现场决定的软阀门。ReLU 是硬开关——过不过由这一维自己的符号决定；SwiGLU 是软阀门——开度由另一条<em>学出来的</em>支路控制，且处处可导。课程给的数字：在 Llama、PaLM、Qwen 的论文里，SwiGLU 稳定优于 ReLU/GELU 约 <strong>0.5 困惑度</strong>。</p>
+<p class="small muted">花絮：提出 GLU 变体的 Shazeer 论文（2020）结尾原话——"We offer no explanation as to why these architectures seem to work; we attribute their success, as all else, to divine benevolence."（我们无法解释它为什么有效，只能归功于神恩。）先在实验上赢，再等理论解释——这行字是现代 LLM 架构工程的真实写照。</p>
+</div>
+
+<h2><span class="n">换件 3 / 6</span>FFN 宽度：4× → 2.6×</h2>
+
+<p>这一行最容易被误读成"独立的设计决策"。它不是——它是换件 2 的<strong>记账后果</strong>。</p>
+
+<pre>2017 双矩阵参数：  2 · d · (4d)  =  8d²
+SwiGLU 三矩阵参数： 3 · d · h
+
+令两者相等（换激活不涨参数）：
+3dh = 8d²   →   h = 8d/3 ≈ 2.67d</pre>
+
+<div class="why"><span class="lbl">为什么是 2.6 · 动机：参数守恒</span>
+<p>SwiGLU 比双矩阵结构多一个 W₃。如果中间层仍留 4×d，FFN 参数就凭空涨一半——和 ReLU 版就不再是公平对比，论文里的 0.5 ppl 优势也无从谈起。解方程得 h ≈ 2.67d，工程上取到硬件友好的整数：Llama 2 7B 的 d=4096，FFN 中间层 11008 = 2.69×d。所以表格里那句括号注释"total params match"才是这一行的全部内容：<strong>2.6 不是选出来的，是解出来的</strong>。</p>
+</div>
+
+<p>顺手算一层 block 的参数账（课程 05 的公式）：attention 四个投影 4d²，SwiGLU FFN 3·(2.6)·d² ≈ 7.9d²。d=4096 时每层约 2 亿参数，32 层约 63 亿，加上两头的嵌入矩阵——正好对上 Llama 3 8B 量级的公开数字。你能用两行乘法核出一个 7B 模型，靠的就是骨架没变。</p>
+
+<h2><span class="n">换件 4 / 6</span>位置信息：Sinusoidal 绝对位置 → RoPE</h2>
+
+<div class="duo">
+  <div class="cell old">
+    <span class="tag">2017 · 入口加法</span>
+    <p>在 embedding 上<strong>加</strong>一个 sin/cos 位置向量，只在入口做一次，之后随残差流漂过所有层。</p>
+    <p>编码的是<strong>绝对</strong>位置：位置 5 有位置 5 的固定向量。超出训练长度即失效——外推差。</p>
+  </div>
+  <div class="cell new">
+    <span class="tag">2026 · 每层现场旋转</span>
+    <p>embedding 不动。在<strong>每一层 attention 内部</strong>，把 Q 和 K 按位置角度成对旋转（V 不转）：</p>
+    <pre>(q₂ᵢ, q₂ᵢ₊₁) 旋转角 θᵢ·m
+θᵢ = base⁻²ⁱ/ᵈ，m 为绝对位置</pre>
+  </div>
+</div>
+
+<div class="why"><span class="lbl">为什么换 · 动机：相对位置 + 长上下文的免费旋钮</span>
+<p>RoPE 的妙处在一条数学性质：旋转后 <code>q'ₘ · k'ₙ</code> 的值<strong>只依赖相对距离 (m − n)</strong>——用绝对位置执行的操作，在点积里编码出了相对位置（课程 07·04 的验证练习：把两个位置同时平移 k，点积分毫不变）。注意力天然更关心"隔多远"而不是"在第几格"，这正中要害。</p>
+<p>第二个红利是那个 <code>base</code> 超参：推理时缩放它（NTK-aware / YaRN / LongRoPE）就能不重训地外推上下文——<strong>Llama 3 从 8K 扩到 128K 就是这么做的</strong>。sinusoidal 没有这样的旋钮。另一条支线 ALiBi 干脆不用嵌入，直接在注意力分数上按距离加线性惩罚，外推极好，但 2026 年的主流答案是 RoPE。</p>
+</div>
+
+<div class="who"><span class="lbl">谁在用</span><span class="chip">Llama 2/3/4</span><span class="chip">Qwen 2/3</span><span class="chip">Mistral</span><span class="chip">DeepSeek-V3</span><span class="chip">Kimi</span><span class="chip">ModernBERT</span></div>
+
+<h2><span class="n">换件 5 / 6</span>注意力：Full MHA → GQA（或 MLA）</h2>
+
+<p>前四个换件都发生在训练图纸上；这一个是<strong>被推理账单逼出来的</strong>。生成时每个已处理 token 的 K、V 都要缓存（KV cache），否则每步重算整个前缀。缓存大小：</p>
+
+<pre>每 token 每层字节数 = 2 (K和V) × KV头数 × d_head × 精度字节数</pre>
+
+<p>课程 07·12 的账：7B 模型（32 层 × 32 头 × d_head 128，fp16）每 token 16 KB，32K 上下文吃掉 <strong>512 MB</strong>；如果 70B 级别 80 层全 MHA，32K 上下文的缓存就是 <strong>32 GB</strong>——光缓存就挤满一张 40 GB A100。质量不逼你换，显存逼你换：</p>
+
+<div class="tbl-wrap"><table>
+  <thead><tr><th>方案</th><th>KV 头数</th><th>缓存缩减</th><th>质量</th><th class="mono">代表</th></tr></thead>
+  <tbody>
+    <tr><td class="c2017">MHA（2017）</td><td class="c2017">= Q 头数</td><td class="c2017">1×（基准）</td><td class="c2017">最好</td><td class="c2017 mono">原版 · GPT-2 · BERT</td></tr>
+    <tr><td>MQA（2019）</td><td>1</td><td>÷ 头数（12–32×）</td><td>难题略掉分</td><td class="mono">早期 PaLM</td></tr>
+    <tr><td><strong>GQA（2023）</strong></td><td>分组共享</td><td>÷ 组倍数</td><td>≈ MHA</td><td class="mono">Llama 3 · Qwen · Mistral</td></tr>
+    <tr><td><strong>MLA（2024）</strong></td><td>共享低秩 latent</td><td>比 MQA 还小</td><td>≈ MHA</td><td class="mono">DeepSeek-V2/V3 · Kimi K2</td></tr>
+  </tbody>
+</table></div>
+
+<div class="why"><span class="lbl">两条现役路线 · 动机：砍推理显存，不砍质量</span>
+<p><strong>GQA</strong>（分组查询注意力）：Q 头保持全额，K/V 头按组共享。Llama 3 8B 是 32 个 Q 头共享 8 组 KV——缓存直接 ÷4；70B 同样 8 组 KV，32K 上下文从 32 GB 降到 10.4 GB。质量与 MHA 几乎无差。</p>
+<p><strong>MLA</strong>（多头潜在注意力）：更激进——K、V 先压进一个共享的低秩 latent 向量（DeepSeek-V3 每 token 每层只缓存约 512 个数，GQA-8 要 1024 个），用时再逐头升维解压，且升维矩阵可以吸收进后续矩阵乘，不付额外代价。每个头保住了自己独立的表达，缓存却比 MQA 还小。</p>
+<p>课程 10·14 的判语：<strong>13B 以上的模型，GQA 或 MLA 实际上是强制项</strong>——全 MHA 在规模上就是一场 KV cache 灾难。</p>
+</div>
+
+<h2><span class="n">换件 6 / 6</span>Bias 项：有 → 无</h2>
+
+<div class="duo">
+  <div class="cell old">
+    <span class="tag">2017</span>
+    <pre>y = Wx + b</pre>
+    <p>每个线性层都带偏置项，LayerNorm 还有平移参数 β。</p>
+  </div>
+  <div class="cell new">
+    <span class="tag">2026</span>
+    <pre>y = Wx</pre>
+    <p>attention 四个投影、FFN 三个矩阵，全部裸乘。RMSNorm 本身就没有 β。</p>
+  </div>
+</div>
+
+<div class="why"><span class="lbl">为什么删 · 动机：测不出贡献的参数不留</span>
+<p>课程 05 关键词表对 bias-free 的注解：<strong>困惑度还略有改善，模型更小</strong>。直觉：每层都有归一化重新居中缩放整个数据流，紧邻的 bias 能表达的平移量，norm 的参数和下一层权重几乎都能吸收——它在大规模下测不出独立贡献。删掉后参数省一点、显存省一点、kernel 简单一点。和 RMSNorm 砍均值、NSP 被 RoBERTa 砍掉是同一种精神：<strong>2026 年的默认审美是消融驱动的极简——凡是消融后测不出差别的，一律不留</strong>。</p>
+</div>
+
+<h2><span class="n">尾声</span>什么没变，以及去哪里深挖</h2>
+
+<p>六次换件之后，清点一下<strong>没动过的东西</strong>：token embedding 进、N 层 block 堆叠、每层"注意力混合位置 + FFN 逐位变换 + 残差直通 + 归一化稳流"、因果掩码、next-token 交叉熵损失，以及 attention 公式本身——softmax(QKᵀ/√d)V 一个符号没改。骨架是 2017 年的，零件是这九年里一件件换上的：</p>
+
+<div class="tbl-wrap"><table>
+  <thead><tr><th>零件</th><th>2017</th><th>2026</th><th>换件动机</th></tr></thead>
+  <tbody>
+    <tr><td>归一化</td><td class="c2017">LayerNorm（post-norm）</td><td>RMSNorm（pre-norm）</td><td>省算力 / 深堆叠训练稳定</td></tr>
+    <tr><td>FFN 激活</td><td class="c2017">ReLU</td><td>SwiGLU</td><td>同参数下 ppl 更低（门控）</td></tr>
+    <tr><td>FFN 宽度</td><td class="c2017">4×</td><td>≈2.6×</td><td>三矩阵下的参数守恒（8/3）</td></tr>
+    <tr><td>位置</td><td class="c2017">Sinusoidal 绝对 · 入口加一次</td><td>RoPE · 每层旋转 Q/K</td><td>相对位置 + 长上下文外推旋钮</td></tr>
+    <tr><td>注意力</td><td class="c2017">Full MHA</td><td>GQA / MLA</td><td>推理 KV cache 显存</td></tr>
+    <tr><td>Bias</td><td class="c2017">有</td><td>无</td><td>消融测不出贡献，删</td></tr>
+  </tbody>
+</table></div>
+
+<div class="verdict"><span class="lbl">一句话收束</span>
+<p>把六行按动机归类只有三类：<strong>为了训练得更稳</strong>（pre-norm 换位）、<strong>为了同样的参数买到更好的质量</strong>（SwiGLU、RoPE）、<strong>为了推理时少花钱</strong>（GQA/MLA 砍显存，RMSNorm、去 bias 省小钱）。没有一项是为了改变模型"是什么"——它们都在优化同一副骨架"跑多快、堆多深、服务多便宜"。这也是读任何 2026 新模型技术报告的正确姿势：先默认六件套齐装（RMSNorm + pre-norm + SwiGLU + RoPE + GQA/MLA + 无 bias），再找它与默认的差分。</p>
+</div>
+
+<h3>课程内的深挖路线</h3>
+<p class="small">· <code>07·04 positional-encoding</code>——sinusoidal / RoPE / ALiBi 三方案对比，亲手验证 RoPE 的相对距离性质<br>
+· <code>07·05 full-transformer</code>——本表出处；Build It 第 4 步就是把 LayerNorm+ReLU 亲手换成 RMSNorm+SwiGLU<br>
+· <code>07·12 kv-cache-flash-attention</code>——KV cache 逐字节算账，GQA 为什么是"the KV-cache win"<br>
+· <code>10·14 open-models-architecture-walkthroughs</code>——拿着这张零件表逐行读 Llama 3 / DeepSeek-V3 / Mixtral / Qwen / Gemma 的 config<br>
+· <code>10·20 deepseek-v3-walkthrough</code>——MLA 的低秩压缩细账：512 维 latent vs GQA 的 1024</p>
+
+</div>
+
+<footer>
+  <p>本讲义对应 <code>phases/07-transformers-deep-dive/05-full-transformer/docs/en.md</code> 中 "The 2026 modernized block" 一节的表格，细节取自课程 07·04（RoPE）、07·12（KV cache 数字）、10·14（GQA/MQA/MLA 谱系与模型对照）、10·20（MLA latent 维度）。SwiGLU 引文出自 Shazeer《GLU Variants Improve Transformer》(arXiv:2002.05202)；GQA 出自 Ainslie et al. (2023)；RoPE 出自 Su et al. (2021)；Llama 3 上下文扩展见《The Llama 3 Herd of Models》(arXiv:2407.21783)。</p>
+</footer>
+</body>
+</html>
