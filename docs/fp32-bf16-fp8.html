@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>FP32 · BF16 · FP8:浮点数把比特花在哪里</title>
+<title>FP32 · BF16 · FP8 · FP4:浮点数把比特花在哪里</title>
 </head>
 <body>
 <style>
@@ -142,7 +142,7 @@
   .heronote { margin-top: 18px; font-size: 13.5px; color: var(--muted); max-width: 44em; }
 
   /* ---- TL;DR ---- */
-  .tldr { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-top: 18px; }
+  .tldr { display: grid; grid-template-columns: repeat(auto-fit, minmax(185px, 1fr)); gap: 14px; margin-top: 18px; }
   .tldr .card { margin: 0; padding: 18px 20px; }
   .tag {
     display: inline-block; font-size: 11.5px; letter-spacing: .1em; color: var(--ink-2);
@@ -182,6 +182,19 @@
   .gains { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-top: 16px; }
   .gains .stat b { font-size: 21px; }
   @media (max-width: 720px) { .gains { grid-template-columns: 1fr; } }
+
+  /* ---- FP4 微缩放块 / 趋势 ---- */
+  .mxrow { display: flex; align-items: stretch; gap: 6px; margin-top: 12px; overflow-x: auto; padding-bottom: 4px; }
+  .mxscale { flex: none; display: flex; align-items: center; font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; font-size: 11px; color: var(--ink); background: var(--exp-wash); border-radius: 4px; padding: 0 10px; white-space: nowrap; }
+  .mxcells { flex: none; display: flex; gap: 2px; }
+  .mxcells i { width: 14px; height: 32px; background: var(--man-wash); border-radius: 3px; }
+  .tier { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-top: 16px; }
+  .tier .card { margin: 0; }
+  .tier .card p { font-size: 14px; }
+  @media (max-width: 720px) { .tier { grid-template-columns: 1fr; } }
+  .timeline { list-style: none; padding: 0; margin-top: 16px; display: grid; gap: 11px; }
+  .timeline li { display: flex; gap: 14px; font-size: 14px; color: var(--ink-2); line-height: 1.7; }
+  .timeline .year { flex: 0 0 74px; font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; font-size: 12px; font-weight: 650; color: var(--accent); text-align: right; padding-top: 3px; }
 
   /* ---- 动态范围图 ---- */
   .chart-card { padding: 20px 22px 14px; }
@@ -235,7 +248,7 @@
 
   /* ---- 对照表 ---- */
   .tbl-wrap { overflow-x: auto; margin-top: 16px; border: 1px solid var(--line); border-radius: 10px; background: var(--card); }
-  table.spec { border-collapse: collapse; width: 100%; min-width: 700px; font-size: 13.5px; }
+  table.spec { border-collapse: collapse; width: 100%; min-width: 760px; font-size: 13.5px; }
   .spec th, .spec td { text-align: left; padding: 9px 14px; border-bottom: 1px solid var(--line); }
   .spec thead th { font-size: 12.5px; color: var(--ink); background: var(--card-2); font-weight: 650; white-space: nowrap; }
   .spec tbody tr:last-child td { border-bottom: none; }
@@ -283,8 +296,8 @@
 
 <header>
   <p class="eyebrow">AI Numerics · 数值精度</p>
-  <h1>FP32 · BF16 · FP8<br>浮点数把比特花在哪里</h1>
-  <p class="sub">它们都是浮点数,区别只有一个:<strong>有限的比特怎么分配</strong>。指数位买"范围",尾数位买"精度"。这一页讲清楚三代格式的构造与取舍,以及在训练、推理里分别怎么用。</p>
+  <h1>FP32 · BF16 · FP8 · FP4<br>浮点数把比特花在哪里</h1>
+  <p class="sub">它们都是浮点数,区别只有一个:<strong>有限的比特怎么分配</strong>。指数位买"范围",尾数位买"精度"。这一页讲清楚四代格式的构造与取舍、在训练和推理里分别怎么用,以及 2026 年整个行业正站在哪一格。</p>
 
   <div class="legend">
     <span><i style="background:var(--sign)"></i>符号位 —— 正负</span>
@@ -292,7 +305,7 @@
     <span><i style="background:var(--man)"></i>尾数位 —— 决定<strong>精度</strong>(有效数字)</span>
   </div>
 
-  <div class="bitpanel" role="img" aria-label="五种浮点格式的位布局对比:FP32 为 1+8+23,BF16 为 1+8+7,FP16 为 1+5+10,FP8 E4M3 为 1+4+3,FP8 E5M2 为 1+5+2">
+  <div class="bitpanel" role="img" aria-label="六种浮点格式的位布局对比:FP32 为 1+8+23,BF16 为 1+8+7,FP16 为 1+5+10,FP8 E4M3 为 1+4+3,FP8 E5M2 为 1+5+2,FP4 E2M1 为 1+2+1">
     <p class="bitname"><b>FP32</b> · 32 bit · 单精度</p>
     <div class="bitrow" data-bitrow="FP32"></div>
     <div class="blabels"><span class="bl bl-s">1</span><span class="bl bl-e" style="width:190px">指数 8</span><span class="bl bl-m" style="width:550px">尾数 23</span></div>
@@ -312,11 +325,15 @@
     <p class="bitname"><b>FP8 E5M2</b> · 8 bit</p>
     <div class="bitrow" data-bitrow="E5M2"></div>
     <div class="blabels"><span class="bl bl-s">1</span><span class="bl bl-e" style="width:118px">指数 5</span><span class="bl bl-m" style="width:46px">尾数 2</span></div>
+
+    <p class="bitname"><b>FP4 E2M1</b> · 4 bit · 须配块缩放(MXFP4 / NVFP4)</p>
+    <div class="bitrow" data-bitrow="E2M1"></div>
+    <div class="blabels"><span class="bl bl-s">1</span><span class="bl bl-e" style="width:46px">指数 2</span><span class="bl bl-m" style="width:22px">尾数 1</span></div>
   </div>
-  <p class="heronote">同一比例下的五种格式。注意 <strong>BF16 的符号位 + 指数位与 FP32 完全对齐</strong>——它就是把 FP32 的尾数直接砍到 7 位得到的,所以两者能表示的数值范围一模一样。</p>
+  <p class="heronote">同一比例下的六种格式。注意 <strong>BF16 的符号位 + 指数位与 FP32 完全对齐</strong>——它就是把 FP32 的尾数直接砍到 7 位得到的,所以两者能表示的数值范围一模一样。</p>
 
   <nav class="toc" aria-label="目录">
-    <a href="#basics">浮点基础</a><a href="#fp32">FP32</a><a href="#bf16">BF16</a><a href="#fp8">FP8</a><a href="#range">动态范围</a><a href="#try">动手试</a><a href="#spec">对照表</a><a href="#practice">工程实践</a><a href="#reading">延伸阅读</a>
+    <a href="#basics">浮点基础</a><a href="#fp32">FP32</a><a href="#bf16">BF16</a><a href="#fp8">FP8</a><a href="#fp4">FP4</a><a href="#range">动态范围</a><a href="#try">动手试</a><a href="#spec">对照表</a><a href="#trend">趋势</a><a href="#practice">工程实践</a><a href="#reading">延伸阅读</a>
   </nav>
 </header>
 
@@ -333,6 +350,10 @@
     <div class="card">
       <span class="tag">FP8</span>
       <p style="margin-top:10px">两种布局:E4M3 准、E5M2 广,<strong>必须配缩放因子</strong>才能用。H100 起 ≈2× BF16 吞吐、一半显存。</p>
+    </div>
+    <div class="card">
+      <span class="tag">FP4</span>
+      <p style="margin-top:10px">元素只有 8 个数值档,靠<strong>块共享缩放</strong>(MXFP4/NVFP4)使用。推理已落地,预训练在路上;Blackwell 上再 2× FP8。</p>
     </div>
   </div>
 </section>
@@ -464,13 +485,48 @@
     <div class="stat"><b>≈2×</b><span>H100 上 FP8 GEMM 相对 BF16 的峰值吞吐;显存带宽与通信量同时减半</span></div>
     <div class="stat"><b>671B</b><span>DeepSeek-V3(2024)用细粒度缩放 + FP32 累加完成 FP8 预训练,证明大规模可行</span></div>
   </div>
-  <p style="font-size:14px">两个值得知道的细节:DeepSeek-V3 发现 Hopper 的 FP8 tensor core 内部累加精度有限,于是每 128 个乘积就搬到 CUDA core 用完整 FP32 再累加一次;对比 INT8,FP8 的对数网格天然更宽容激活里的离群值,校准压力小得多。再往下走是 4 位:Blackwell 的 NVFP4 / MXFP4 用"每 16/32 个数共享一个缩放因子"的微缩放块格式,把缩放的思想直接做进了数据类型——gpt-oss 就是以 MXFP4 发布的。</p>
+  <p style="font-size:14px">两个值得知道的细节:DeepSeek-V3 发现 Hopper 的 FP8 tensor core 内部累加精度有限,于是每 128 个乘积就搬到 CUDA core 用完整 FP32 再累加一次;对比 INT8,FP8 的对数网格天然更宽容激活里的离群值,校准压力小得多。再往下走就是 4 位——微缩放块格式 NVFP4 / MXFP4,下一节展开。</p>
+</section>
+
+<section id="fp4">
+  <p class="eyebrow">Format · OCP MX 2023 / NVIDIA Blackwell 2024</p>
+  <h2>FP4:把缩放因子做进数据类型</h2>
+  <p>裸的 4 比特只有 16 个码位。E2M1 布局下,全部正数取值一行字就写完了:<strong>0.5、1、1.5、2、3、4、6</strong>——没有 ∞ 也没有 NaN,溢出按硬件惯例饱和到 ±6。单独使用毫无希望,它的正确打开方式是<strong>微缩放(microscaling)块格式</strong>:把 FP8 时代"每块配一个缩放因子"的经验直接固化进数据类型。</p>
+
+  <div class="card">
+    <h3>π 在 E2M1 里:3.0(误差 −4.5%)</h3>
+    <div class="bitpanel" style="margin-top:12px">
+      <div class="bitrow" data-bitrow="E2M1" data-val="3.141592653589793"></div>
+      <div class="blabels"><span class="bl bl-s">1</span><span class="bl bl-e" style="width:46px">指数 2</span><span class="bl bl-m" style="width:22px">尾数 1</span></div>
+    </div>
+    <p style="font-size:13.5px">整个格式只跨约 1 个数量级(0.5 ~ 6)。于是让每 16 或 32 个元素<strong>共享一个高精度缩放因子</strong>,块内只存 4 位的"相对值":</p>
+    <div class="mxrow" role="img" aria-label="微缩放块示意:一个共享缩放因子加 16 个 FP4 元素">
+      <span class="mxscale">×2ᵏ 共享缩放</span>
+      <span class="mxcells" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span>
+    </div>
+    <p class="qnote" style="margin-top:8px">一个 NVFP4 块 = 1 个 E4M3 缩放因子 + 16 个 FP4 元素,等效 ≈4.5 bit/值</p>
+  </div>
+
+  <div class="tbl-wrap" style="margin-top:14px">
+    <table class="spec">
+      <thead><tr><th>两种块格式</th><th>MXFP4(OCP MX)</th><th>NVFP4(NVIDIA)</th></tr></thead>
+      <tbody>
+        <tr><td>块大小</td><td>32 个元素</td><td>16 个元素</td></tr>
+        <tr><td>缩放因子格式</td><td class="txt">UE8M0——8 位纯 2 的幂,硬件只需做指数加法</td><td class="txt">E4M3(带尾数,更贴合局部分布)+ 整张量再套一层 FP32</td></tr>
+        <tr><td>等效位宽</td><td>≈4.25 bit/值</td><td>≈4.5 bit/值</td></tr>
+        <tr><td>预训练表现</td><td class="txt">达到同等 loss 约需多 ~36% token</td><td class="txt">12B × 10T token 与 FP8 基线打平</td></tr>
+        <tr><td>代表落地</td><td class="txt">gpt-oss 的 MoE 权重</td><td class="txt">DeepSeek-R1 的 NVFP4 推理版、预训练研究</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p>训练要在 4 位下不崩,靠一套组合拳:<strong>随机 Hadamard 变换</strong>把离群值摊平、梯度用<strong>随机舍入</strong>(按距离概率向上/向下取整,保证期望无偏)、少数敏感层保留高精度。NVIDIA 用这套配方在 12B 模型 × 10T token 上把 loss 和下游精度追平了 FP8;华为也为昇腾提出了 HiFloat4 变体。硬件上,Blackwell 的 FP4 吞吐又是 FP8 的 2 倍。推理端已经落地;预训练端,截至 2026 年 8 月还没有公开的旗舰模型用 FP4 完成——它今天的位置,大致相当于 2023 年的 FP8。</p>
 </section>
 
 <section id="range">
   <p class="eyebrow">Comparison</p>
   <h2>动态范围:一图看懂</h2>
-  <p>对数轴上每个格式能覆盖的正数区间。<strong>条的长度几乎只由指数位数决定</strong>:BF16 与 FP32 等长;两种 FP8 都很短——但配上缩放因子,短条可以"滑"到数据所在的位置。</p>
+  <p>对数轴上每个格式能覆盖的正数区间。<strong>条的长度几乎只由指数位数决定</strong>:BF16 与 FP32 等长;两种 FP8 都很短——但配上缩放因子,短条可以"滑"到数据所在的位置。最下面 FP4 那一小截不是渲染错误,整个格式就那么宽。</p>
   <div class="card chart-card">
     <div class="cleg">
       <span><i style="background:var(--exp)"></i>正规数范围</span>
@@ -507,6 +563,11 @@
           <span class="ctrack"><i class="bar-s" style="left:49.19%;width:1.03%"></i><i class="bar-n" style="left:50.22%;width:5.06%"></i></span>
           <span class="cvals">0.002 ~ 448</span>
         </div>
+        <div class="crow" tabindex="0" data-tip="<b>FP4 E2M1</b>(元素格式)<br>正规:1 ~ 6;次正规:0.5<br>全部只有 8 个数值档,跨约 1.1 个数量级<br>所以缩放因子必须做进数据类型(每 16/32 个元素配一个)">
+          <span class="clab">E2M1</span>
+          <span class="ctrack"><i class="bar-s" style="left:51.93%;width:0.34%"></i><i class="bar-n" style="left:52.27%;width:0.88%"></i></span>
+          <span class="cvals">0.5 ~ 6</span>
+        </div>
         <div class="axis" aria-hidden="true">
           <span style="left:6.82%">10⁻⁴⁰</span><span style="left:18.18%">10⁻³⁰</span><span style="left:29.55%">10⁻²⁰</span><span style="left:40.91%">10⁻¹⁰</span><span style="left:52.27%">1</span><span style="left:63.64%">10¹⁰</span><span style="left:75%">10²⁰</span><span style="left:86.36%">10³⁰</span><span style="left:97.73%">10⁴⁰</span>
         </div>
@@ -517,8 +578,8 @@
 
 <section id="try">
   <p class="eyebrow">Interactive</p>
-  <h2>动手试:把你的数塞进 8 个比特</h2>
-  <p>输入任意数,看它在五种格式里分别被舍入成什么(round-to-nearest-even,和硬件一致)。试试 65504——FP16 的最大值,在 E5M2 里会直接溢出;再试 0.00003——像不像一个小梯度在 E4M3 里被抹成 0?</p>
+  <h2>动手试:把你的数塞进 8 个、甚至 4 个比特</h2>
+  <p>输入任意数,看它在六种格式里分别被舍入成什么(round-to-nearest-even,和硬件一致)。试试 65504——FP16 的最大值,在 E5M2 里会直接溢出;再试 0.00003——像不像一个小梯度在 E4M3 里被抹成 0?FP4 一行则时刻提醒你:没有块缩放,它几乎表示不了任何东西。</p>
   <div class="card">
     <div class="qbar">
       <label for="qin">输入一个数</label>
@@ -536,7 +597,7 @@
         <tbody id="qbody"></tbody>
       </table>
     </div>
-    <p class="qnote" style="margin-top:10px">页面里的计算实时运行在你的浏览器中,算法与上文所有数字同源。E4M3 溢出显示 NaN(该格式没有 ∞;实际硬件转换时通常配"饱和到 ±448"模式)。</p>
+    <p class="qnote" style="margin-top:10px">页面里的计算实时运行在你的浏览器中,算法与上文所有数字同源。E4M3 溢出显示 NaN(该格式没有 ∞;实际硬件转换时通常配"饱和到 ±448"模式);FP4 E2M1 完全没有 ∞/NaN,溢出直接饱和到 ±6。</p>
   </div>
 </section>
 
@@ -546,25 +607,58 @@
   <div class="tbl-wrap">
     <table class="spec">
       <thead>
-        <tr><th>属性</th><th>FP32</th><th>BF16</th><th class="dim">FP16(对照)</th><th>FP8 E4M3</th><th>FP8 E5M2</th></tr>
+        <tr><th>属性</th><th>FP32</th><th>BF16</th><th class="dim">FP16(对照)</th><th>FP8 E4M3</th><th>FP8 E5M2</th><th>FP4 E2M1</th></tr>
       </thead>
       <tbody>
-        <tr><td>布局 符号/指数/尾数</td><td>1 / 8 / 23</td><td>1 / 8 / 7</td><td class="dim">1 / 5 / 10</td><td>1 / 4 / 3</td><td>1 / 5 / 2</td></tr>
-        <tr><td>指数偏置 bias</td><td>127</td><td>127</td><td class="dim">15</td><td>7</td><td>15</td></tr>
-        <tr><td>最大有限值</td><td>3.40×10³⁸</td><td>3.39×10³⁸</td><td class="dim">65504</td><td>448</td><td>57344</td></tr>
-        <tr><td>最小正规数</td><td>1.18×10⁻³⁸</td><td>1.18×10⁻³⁸</td><td class="dim">6.10×10⁻⁵</td><td>0.015625</td><td>6.10×10⁻⁵</td></tr>
-        <tr><td>最小次正规数</td><td>1.40×10⁻⁴⁵</td><td>9.18×10⁻⁴¹</td><td class="dim">5.96×10⁻⁸</td><td>0.001953</td><td>1.53×10⁻⁵</td></tr>
-        <tr><td>ε(1.0 附近间距)</td><td>1.19×10⁻⁷</td><td>7.81×10⁻³</td><td class="dim">9.77×10⁻⁴</td><td>0.125</td><td>0.25</td></tr>
-        <tr><td>十进制有效位 ≈</td><td>7.2</td><td>2.4</td><td class="dim">3.3</td><td>1.2</td><td>0.9</td></tr>
-        <tr><td>动态范围(数量级)</td><td>~83</td><td>~79</td><td class="dim">~12</td><td>~5.4</td><td>~9.6</td></tr>
-        <tr><td>±∞ / NaN</td><td>有 / 有</td><td>有 / 有</td><td class="dim">有 / 有</td><td>无 ∞ / 2 个码位</td><td>有 / 有</td></tr>
-        <tr><td>π 舍入为</td><td>3.1415927</td><td>3.140625</td><td class="dim">3.140625</td><td>3.25</td><td>3.0</td></tr>
-        <tr><td>0.1 舍入为</td><td>0.100000001</td><td>0.10009766</td><td class="dim">0.09997559</td><td>0.1015625</td><td>0.09375</td></tr>
-        <tr><td>典型角色</td><td class="txt">master 权重、累加器、optimizer 状态</td><td class="txt">训练默认计算精度、推理基线</td><td class="txt dim">老硬件 AMP(需 loss scaling)</td><td class="txt">前向:权重、激活、KV cache</td><td class="txt">反向:梯度</td></tr>
-        <tr><td>代表硬件</td><td class="txt">所有</td><td class="txt">TPU v2+、A100+、AMX、Apple silicon</td><td class="txt dim">Pascal 之后几乎所有 GPU</td><td class="txt" colspan="2">NVIDIA H100 / Ada / Blackwell、AMD MI300+、Intel Gaudi 2+</td></tr>
+        <tr><td>布局 符号/指数/尾数</td><td>1 / 8 / 23</td><td>1 / 8 / 7</td><td class="dim">1 / 5 / 10</td><td>1 / 4 / 3</td><td>1 / 5 / 2</td><td>1 / 2 / 1</td></tr>
+        <tr><td>指数偏置 bias</td><td>127</td><td>127</td><td class="dim">15</td><td>7</td><td>15</td><td>1</td></tr>
+        <tr><td>最大有限值</td><td>3.40×10³⁸</td><td>3.39×10³⁸</td><td class="dim">65504</td><td>448</td><td>57344</td><td>6</td></tr>
+        <tr><td>最小正规数</td><td>1.18×10⁻³⁸</td><td>1.18×10⁻³⁸</td><td class="dim">6.10×10⁻⁵</td><td>0.015625</td><td>6.10×10⁻⁵</td><td>1</td></tr>
+        <tr><td>最小次正规数</td><td>1.40×10⁻⁴⁵</td><td>9.18×10⁻⁴¹</td><td class="dim">5.96×10⁻⁸</td><td>0.001953</td><td>1.53×10⁻⁵</td><td>0.5</td></tr>
+        <tr><td>ε(1.0 附近间距)</td><td>1.19×10⁻⁷</td><td>7.81×10⁻³</td><td class="dim">9.77×10⁻⁴</td><td>0.125</td><td>0.25</td><td>0.5</td></tr>
+        <tr><td>十进制有效位 ≈</td><td>7.2</td><td>2.4</td><td class="dim">3.3</td><td>1.2</td><td>0.9</td><td>0.6</td></tr>
+        <tr><td>动态范围(数量级)</td><td>~83</td><td>~79</td><td class="dim">~12</td><td>~5.4</td><td>~9.6</td><td>~1.1</td></tr>
+        <tr><td>±∞ / NaN</td><td>有 / 有</td><td>有 / 有</td><td class="dim">有 / 有</td><td>无 ∞ / 2 个码位</td><td>有 / 有</td><td>无 / 无,溢出饱和</td></tr>
+        <tr><td>π 舍入为</td><td>3.1415927</td><td>3.140625</td><td class="dim">3.140625</td><td>3.25</td><td>3.0</td><td>3.0</td></tr>
+        <tr><td>0.1 舍入为</td><td>0.100000001</td><td>0.10009766</td><td class="dim">0.09997559</td><td>0.1015625</td><td>0.09375</td><td>0(下溢)</td></tr>
+        <tr><td>典型角色</td><td class="txt">master 权重、累加器、optimizer 状态</td><td class="txt">训练默认计算精度、推理基线</td><td class="txt dim">老硬件 AMP(需 loss scaling)</td><td class="txt">前向:权重、激活、KV cache</td><td class="txt">反向:梯度</td><td class="txt">恒配块缩放;推理权重、预训练研究</td></tr>
+        <tr><td>代表硬件</td><td class="txt">所有</td><td class="txt">TPU v2+、A100+、AMX、Apple silicon</td><td class="txt dim">Pascal 之后几乎所有 GPU</td><td class="txt" colspan="2">NVIDIA H100 / Ada / Blackwell、AMD MI300+、Intel Gaudi 2+</td><td class="txt">Blackwell 原生;昇腾走 HiFloat4 变体</td></tr>
       </tbody>
     </table>
   </div>
+</section>
+
+<section id="trend">
+  <p class="eyebrow">Landscape · 2026</p>
+  <h2>趋势:从 DeepSeek-V3 到 FP4 前夜</h2>
+  <p>DeepSeek-V3 之前,FP8 训练是少数人的黑科技;之后,它成了领先玩家的"进取档"。时间线一目了然:</p>
+  <ul class="timeline">
+    <li><span class="year">2022</span><span>H100 落地 FP8 tensor core(Transformer Engine);E4M3/E5M2 格式提案发表,后成 OCP OFP8 标准。</span></li>
+    <li><span class="year">2023</span><span>先行者试水:Inflection-2、微软 FP8-LM 验证 FP8 训练可行;OCP 发布 MX 微缩放规范,MXFP4 已在列。</span></li>
+    <li><span class="year">2024.12</span><span><strong>DeepSeek-V3:671B MoE 全程 FP8 预训练,并完整公开配方</strong>(细粒度块缩放 + 高精度累加)——分水岭,证明旗舰规模可行。</span></li>
+    <li><span class="year">2025</span><span>跟进潮:<a href="https://ai.meta.com/blog/llama-4-multimodal-intelligence/" target="_blank" rel="noopener">Llama 4 官宣 FP8 预训练</a>(Llama 3 当年还特意为稳定性留在 BF16);蚂蚁 <a href="https://huggingface.co/inclusionAI/Ling-1T" target="_blank" rel="noopener">Ling-1T</a> 宣称最大 FP8 训练模型(1T 参数);NVIDIA Nemotron 系列;R1 等推理模型延续 FP8 底座。</span></li>
+    <li><span class="year">2025.8</span><span>DeepSeek-V3.1 换用 <a href="https://zhuanlan.zhihu.com/p/1942320366493078016" target="_blank" rel="noopener">UE8M0 缩放格式</a>,明确面向下一代国产芯片,寒武纪、沐曦、摩尔线程等跟进原生 FP8——精度格式第一次成为供应链协同问题。同月,gpt-oss 以 MXFP4 权重发布。</span></li>
+    <li><span class="year">2025–26</span><span>FP4 预训练论文密集出现:<a href="https://arxiv.org/abs/2509.25149" target="_blank" rel="noopener">NVFP4 在 12B × 10T token 上打平 FP8</a>、原生硬件 MXFP4、昇腾 HiFloat4;Blackwell 把 FP4 吞吐再翻倍。截至 2026.8,尚无公开旗舰用 FP4 完成预训练。</span></li>
+  </ul>
+  <p>把 2026 年 8 月的格局压成三档:</p>
+  <div class="tier">
+    <div class="card">
+      <h3>默认档:BF16</h3>
+      <p>绝大多数模型的训练主体,稳妥、无需额外工程投入。注意 Qwen、GLM 等发布的 "-FP8" checkpoint 是推理权重,不代表训练精度。</p>
+      <p class="rx">BF16 计算 + FP32 账本</p>
+    </div>
+    <div class="card">
+      <h3>进取档:FP8</h3>
+      <p>DeepSeek 全系、Llama 4、Ling-1T、Nemotron……用工程复杂度换 ~2× 吞吐与一半显存。中国厂商尤其激进:算力受限 + 国产芯片生态(UE8M0)双重驱动。</p>
+      <p class="rx">FP8 GEMM + 细粒度缩放 + FP32 累加</p>
+    </div>
+    <div class="card">
+      <h3>前沿档:FP4</h3>
+      <p>论文与中试阶段,推理端先行落地(gpt-oss、R1-NVFP4),等待第一个旗舰预训练——它今天的位置 ≈ 2023 年的 FP8。</p>
+      <p class="rx">NVFP4 / MXFP4 + 关键层保高精度</p>
+    </div>
+  </div>
+  <p style="font-size:14px">两条注脚:所谓 FP8/FP4 训练<strong>永远是混合精度</strong>——低精度只接管矩阵乘,master 权重、optimizer、累加仍是 FP32,这个分工从未变过。闭源三家(OpenAI / Anthropic / Google)不披露训练精度,Google 的 TPU 生态历来以 BF16 为中心;所以"领先模型普遍用什么"的可验证答案是:<strong>公开侧 BF16 为默认、FP8 为高效派共识、FP4 蓄势待发</strong>。</p>
 </section>
 
 <section id="practice">
@@ -584,7 +678,7 @@
     <div class="card">
       <h3>推理部署</h3>
       <p>权重量化近乎无损,KV cache 是第二大显存头,别忘了它。</p>
-      <p class="rx">权重 FP8(Hopper+ 近无损)或 INT4/AWQ;KV cache 可 FP8;用 BF16 基线校对精度</p>
+      <p class="rx">权重 FP8(Hopper+ 近无损)或 4-bit(INT4 / NVFP4);KV cache 可 FP8;用 BF16 基线校对精度</p>
     </div>
     <div class="card">
       <h3>老硬件(V100 / 20 系)</h3>
@@ -637,6 +731,7 @@ with te.fp8_autocast(enabled=True, fp8_recipe=DelayedScaling(fp8_format=Format.H
         <li><a href="https://arxiv.org/abs/2209.05433" target="_blank" rel="noopener">FP8 Formats for Deep Learning</a><small>Micikevicius et al., 2022——E4M3 / E5M2 的定义与实验,后成 OCP OFP8 标准</small></li>
         <li><a href="https://arxiv.org/abs/2412.19437" target="_blank" rel="noopener">DeepSeek-V3 Technical Report</a><small>§3.3——671B MoE 的 FP8 训练:细粒度缩放 + 高精度累加</small></li>
         <li><a href="https://arxiv.org/abs/2310.10537" target="_blank" rel="noopener">Microscaling Data Formats for Deep Learning</a><small>OCP MX,2023——通往 MXFP4 的块共享缩放</small></li>
+        <li><a href="https://arxiv.org/abs/2509.25149" target="_blank" rel="noopener">Pretraining Large Language Models with NVFP4</a><small>NVIDIA,2025——4-bit 预训练配方:Hadamard 变换 + 随机舍入 + 关键层高精度</small></li>
       </ul>
     </div>
   </div>
@@ -652,16 +747,18 @@ with te.fp8_autocast(enabled=True, fp8_recipe=DelayedScaling(fp8_format=Format.H
 
 <script>
   const FORMATS = {
-    FP32: { E: 8,  M: 23, bias: 127, e4m3: false, label: 'FP32' },
-    BF16: { E: 8,  M: 7,  bias: 127, e4m3: false, label: 'BF16' },
-    FP16: { E: 5,  M: 10, bias: 15,  e4m3: false, label: 'FP16' },
-    E4M3: { E: 4,  M: 3,  bias: 7,   e4m3: true,  label: 'FP8 E4M3' },
-    E5M2: { E: 5,  M: 2,  bias: 15,  e4m3: false, label: 'FP8 E5M2' }
+    FP32: { E: 8, M: 23, bias: 127, special: 'ieee',  label: 'FP32' },
+    BF16: { E: 8, M: 7,  bias: 127, special: 'ieee',  label: 'BF16' },
+    FP16: { E: 5, M: 10, bias: 15,  special: 'ieee',  label: 'FP16' },
+    E4M3: { E: 4, M: 3,  bias: 7,   special: 'nonan', label: 'FP8 E4M3' },
+    E5M2: { E: 5, M: 2,  bias: 15,  special: 'ieee',  label: 'FP8 E5M2' },
+    E2M1: { E: 2, M: 1,  bias: 1,   special: 'none',  label: 'FP4 E2M1' }
   };
 
   function fmtMax(f) {
-    const topE = f.e4m3 ? (1 << f.E) - 1 : (1 << f.E) - 2;
-    const maxM = f.e4m3 ? (1 << f.M) - 2 : (1 << f.M) - 1;
+    const maxE = (1 << f.E) - 1;
+    const topE = f.special === 'ieee' ? maxE - 1 : maxE;
+    const maxM = f.special === 'nonan' ? (1 << f.M) - 2 : (1 << f.M) - 1;
     return (1 + maxM / (1 << f.M)) * Math.pow(2, topE - f.bias);
   }
   function exponentOf(a) {
@@ -812,9 +909,14 @@ with te.fp8_autocast(enabled=True, fp8_recipe=DelayedScaling(fp8_format=Format.H
         val = fmtVal(r.value);
         err = fmtErr(x, r.value);
       } else if (r.status === 'overflow') {
-        if (f.e4m3) {
+        if (f.special === 'nonan') {
           bits = bitsHTML(f, r.s, (1 << f.E) - 1, (1 << f.M) - 1);
           val = 'NaN <span class="qnote">溢出(无 ∞)</span>';
+        } else if (f.special === 'none') {
+          const sv = (r.s ? -1 : 1) * fmtMax(f);
+          bits = bitsHTML(f, r.s, (1 << f.E) - 1, (1 << f.M) - 1);
+          val = fmtVal(sv) + ' <span class="qnote">饱和(无 ∞/NaN)</span>';
+          err = fmtErr(x, sv);
         } else {
           bits = bitsHTML(f, r.s, (1 << f.E) - 1, 0);
           val = (r.s ? '−∞' : '+∞') + ' <span class="qnote">溢出</span>';
